@@ -2,29 +2,36 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { BullModule } from '@nestjs/bullmq';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { validateEnv } from './config/env.validation.js';
+import { typeOrmOptions } from './config/typeorm.config.js';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
+import { AuthModule } from './auth/auth.module.js';
+import { JwtAuthGuard } from './common/guards/jwt-auth.guard.js';
+import { RolesGuard } from './common/guards/roles.guard.js';
+import { LoggingInterceptor } from './common/interceptors/logging.interceptor.js';
+import { SourcesModule } from './sources/sources.module.js';
+import { UsersModule } from './users/users.module.js';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: '.env'
+      envFilePath: '.env',
+      validate: validateEnv,
+    }),
+
+    // In-memory counters: fine for one instance. Switch to Redis-backed
+    // storage before running more than one API container.
+    ThrottlerModule.forRoot({
+      throttlers: [{ name: 'default', ttl: 60_000, limit: 30 }],
     }),
 
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        type: 'postgres',
-        host: configService.get<string>('DATABASE_HOST'),
-        port: configService.get<number>('DATABASE_PORT'),
-        username: configService.get<string>('DATABASE_USER'),
-        password: configService.get<string>('DATABASE_PASSWORD'),
-        database: configService.get<string>('DATABASE_NAME'),
-
-        autoLoadEntities: true,
-        synchronize: false,
-      }),
+      useFactory: typeOrmOptions,
     }),
 
     BullModule.forRootAsync({
@@ -36,8 +43,18 @@ import { AppService } from './app.service.js';
         },
       }),
     }),
+
+    UsersModule,
+    AuthModule,
+    SourcesModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    // Guards run in this order: authenticate first, then check roles.
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: RolesGuard },
+    { provide: APP_INTERCEPTOR, useClass: LoggingInterceptor },
+  ],
 })
 export class AppModule {}
