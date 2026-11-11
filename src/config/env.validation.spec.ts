@@ -48,4 +48,24 @@ describe('validateEnv', () => {
       validateEnv({ JWT_SECRET: goodSecret, REFRESH_TOKEN_TTL_DAYS: '7d' }),
     ).toThrow('REFRESH_TOKEN_TTL_DAYS must be a positive integer');
   });
+
+  it('accepts valid firewall and migration settings', () => {
+    expect(() =>
+      validateEnv({
+        JWT_SECRET: goodSecret,
+        FIREWALL_AUTO_BLOCK_MINUTES: '0',
+        FIREWALL_ALLOWLIST: '10.0.0.0/8, 192.0.2.1,::1',
+        DATABASE_RUN_MIGRATIONS: 'true',
+      }),
+    ).not.toThrow();
+  });
+
+  it.each([
+    [{ FIREWALL_AUTO_BLOCK_MINUTES: '-5' }, 'FIREWALL_AUTO_BLOCK_MINUTES'],
+    [{ FIREWALL_AUTO_BLOCK_MINUTES: '1h' }, 'FIREWALL_AUTO_BLOCK_MINUTES'],
+    [{ FIREWALL_ALLOWLIST: '10.0.0.0/8,office' }, 'FIREWALL_ALLOWLIST: "office"'],
+    [{ DATABASE_RUN_MIGRATIONS: 'yes' }, 'DATABASE_RUN_MIGRATIONS'],
+  ])('rejects bad firewall or migration settings: %o', (env, message) => {
+    expect(() => validateEnv({ JWT_SECRET: goodSecret, ...env })).toThrow(message);
+  });
 });

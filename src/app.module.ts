@@ -18,6 +18,9 @@ import { SourcesModule } from './sources/sources.module.js';
 import { UsersModule } from './users/users.module.js';
 import { RulesModule } from './rules/rules.module.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
+import { AuditModule } from './audit/audit.module.js';
+import { FirewallModule } from './firewall/firewall.module.js';
+import { HealthModule } from './health/health.module.js';
 
 @Module({
   imports: [
@@ -50,6 +53,10 @@ import { NotificationsModule } from './notifications/notifications.module.js';
 
     EventEmitterModule.forRoot(),
 
+    // First, so its middleware turns blocked IPs away before anything else runs.
+    FirewallModule,
+    AuditModule,
+    HealthModule,
     UsersModule,
     AuthModule,
     SourcesModule,

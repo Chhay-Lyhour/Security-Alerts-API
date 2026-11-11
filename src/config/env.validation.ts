@@ -1,3 +1,5 @@
+import { parseNetwork } from '../firewall/network.js';
+
 const PLACEHOLDER_SECRETS = new Set(['change_me_to_a_long_random_string']);
 const MIN_JWT_SECRET_LENGTH = 32;
 
@@ -61,6 +63,23 @@ export const validateEnv = (env: RawEnv): RawEnv => {
   const trustProxy = text(env, 'TRUST_PROXY');
   if (trustProxy !== undefined && !/^\d+$/.test(trustProxy)) {
     errors.push('TRUST_PROXY must be the number of proxy hops in front of the app (e.g. 1)');
+  }
+
+  const autoBlock = text(env, 'FIREWALL_AUTO_BLOCK_MINUTES');
+  if (autoBlock !== undefined && !/^\d+$/.test(autoBlock)) {
+    errors.push('FIREWALL_AUTO_BLOCK_MINUTES must be a whole number of minutes (0 turns auto-blocking off)');
+  }
+  for (const entry of (text(env, 'FIREWALL_ALLOWLIST') ?? '').split(',').map((e) => e.trim()).filter(Boolean)) {
+    try {
+      parseNetwork(entry, { allowWide: true });
+    } catch {
+      errors.push(`FIREWALL_ALLOWLIST: "${entry}" is not a valid IP address or CIDR range`);
+    }
+  }
+
+  const runMigrations = text(env, 'DATABASE_RUN_MIGRATIONS');
+  if (runMigrations !== undefined && !['true', 'false'].includes(runMigrations)) {
+    errors.push('DATABASE_RUN_MIGRATIONS must be true or false');
   }
 
   if (errors.length > 0) {
