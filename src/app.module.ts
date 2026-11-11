@@ -16,6 +16,8 @@ import { RolesGuard } from './common/guards/roles.guard.js';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor.js';
 import { SourcesModule } from './sources/sources.module.js';
 import { UsersModule } from './users/users.module.js';
+import { RulesModule } from './rules/rules.module.js';
+import { NotificationsModule } from './notifications/notifications.module.js';
 
 @Module({
   imports: [
@@ -46,13 +48,14 @@ import { UsersModule } from './users/users.module.js';
       }),
     }),
 
-    // In-process events, e.g. alert.created for the rule engine.
     EventEmitterModule.forRoot(),
 
     UsersModule,
     AuthModule,
     SourcesModule,
     AlertsModule,
+    RulesModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [

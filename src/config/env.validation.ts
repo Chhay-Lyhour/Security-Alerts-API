@@ -46,6 +46,18 @@ export const validateEnv = (env: RawEnv): RawEnv => {
     }
   }
 
+  // Notification channels are optional; each one is enabled by its settings.
+  for (const key of ['SLACK_WEBHOOK_URL', 'DISCORD_WEBHOOK_URL']) {
+    const url = text(env, key);
+    if (url !== undefined && !/^https:\/\/\S+$/.test(url)) {
+      errors.push(`${key} must be an https:// URL`);
+    }
+  }
+  checkPositiveInt(env, 'SMTP_PORT', errors);
+  if ((text(env, 'SMTP_HOST') === undefined) !== (text(env, 'ALERT_EMAIL_TO') === undefined)) {
+    errors.push('SMTP_HOST and ALERT_EMAIL_TO must be set together to enable email notifications');
+  }
+
   const trustProxy = text(env, 'TRUST_PROXY');
   if (trustProxy !== undefined && !/^\d+$/.test(trustProxy)) {
     errors.push('TRUST_PROXY must be the number of proxy hops in front of the app (e.g. 1)');
