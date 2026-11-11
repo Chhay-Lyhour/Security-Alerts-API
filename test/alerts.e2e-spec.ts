@@ -154,7 +154,8 @@ describe('Sources and alerts (e2e)', () => {
     let resolvedId: string;
 
     beforeAll(async () => {
-      await app.get(DataSource).query('TRUNCATE "alerts"');
+      // CASCADE: notifications reference alerts.
+      await app.get(DataSource).query('TRUNCATE "alerts" CASCADE');
       const seed = [
         { severity: 'low', type: 'new_ip' },
         { severity: 'high', type: 'failed_login' },

@@ -24,7 +24,11 @@
     "migration:run": "typeorm-ts-node-esm migration:run -d src/data-source.ts",
     "migration:revert": "typeorm-ts-node-esm migration:revert -d src/data-source.ts",
     "migration:show": "typeorm-ts-node-esm migration:show -d src/data-source.ts",
-    "seed:admin": "nest build && node dist/scripts/seed-admin.js"
+    "seed:admin": "nest build && node dist/scripts/seed-admin.js",
+    "docker:up": "docker compose up -d --build",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f api bank-demo",
+    "demo:setup": "node demo/setup.mjs"
   },
   "dependencies": {
     "@nestjs/bullmq": "^12.0.0",

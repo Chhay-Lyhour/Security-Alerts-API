@@ -1,0 +1,25 @@
+node_modules
+dist
+coverage
+.git
+.github
+.vscode
+.idea
+*.log
+.DS_Store
+
+# Secrets never go into the image; compose passes them at runtime.
+.env
+.env.*
+!.env.example
+
+# Not needed to build the API image.
+test
+docs
+postman
+demo
+docker
+docker-compose.yml
+README.md
+SPECS.md
+AGENTS.md

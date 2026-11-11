@@ -1,0 +1,94 @@
+# Security Alerts API as a service, plus a demo app that uses it.
+#
+#   cp .env.example .env        # then set JWT_SECRET
+#   docker compose up -d --build
+#
+# Values come from .env. Host ports can be changed there too, e.g.
+# REDIS_HOST_PORT=6380 if Redis already runs on your machine.
+
+name: security-alerts
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DATABASE_USER:-postgres}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-postgres}
+      POSTGRES_DB: ${DATABASE_NAME:-security_alerts}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - '${POSTGRES_HOST_PORT:-5432}:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # Append-only file, so queued notification jobs survive a restart.
+    command: ['redis-server', '--appendonly', 'yes']
+    volumes:
+      - redisdata:/data
+    ports:
+      - '${REDIS_HOST_PORT:-6379}:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # The security layer other apps plug into.
+  api:
+    build: .
+    image: security-alerts-api:latest
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      # Inside the compose network, services are reached by name.
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_USER: ${DATABASE_USER:-postgres}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD:-postgres}
+      DATABASE_NAME: ${DATABASE_NAME:-security_alerts}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      # Bring the schema up to date on start (no separate migrate step).
+      DATABASE_RUN_MIGRATIONS: 'true'
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env (see .env.example)}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - '${API_HOST_PORT:-3000}:3000'
+
+  # A fictional bank's website, the "integrated app". It asks the API whether
+  # a visitor's IP is blocked and reports failed logins as alerts.
+  bank-demo:
+    build: ./demo/bank-app
+    image: security-alerts-bank-demo:latest
+    restart: unless-stopped
+    environment:
+      PORT: 4000
+      SECURITY_API_URL: http://api:3000
+      # Created by `npm run demo:setup` (or by hand with POST /sources).
+      SECURITY_API_KEY: ${BANK_API_KEY:-}
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - '${BANK_HOST_PORT:-4000}:4000'
+
+volumes:
+  pgdata:
+  redisdata:
