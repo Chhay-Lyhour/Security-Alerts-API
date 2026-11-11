@@ -9,8 +9,10 @@ import type { JwtPayload } from '../common/types/auth-user.type.js';
 import type { User } from '../users/entities/user.entity.js';
 import { hashPassword, verifyPassword } from '../users/password.util.js';
 import { UsersService } from '../users/users.service.js';
+import type { RequestContext } from './detection/request-context.js';
 import type { LoginDto } from './dto/login.dto.js';
 import type { RegisterDto } from './dto/register.dto.js';
+import { LoginDetectorService } from './login-detector.service.js';
 import { RefreshTokensService } from './refresh-tokens.service.js';
 
 export type AuthResponse = {
@@ -35,6 +37,7 @@ export class AuthService {
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
     private readonly refreshTokens: RefreshTokensService,
+    private readonly loginDetector: LoginDetectorService,
     config: ConfigService,
   ) {
     this.accessTtlSeconds = Number(
@@ -54,13 +57,25 @@ export class AuthService {
     return this.buildResponse(user, await this.refreshTokens.issue(user.id));
   }
 
-  async login(dto: LoginDto): Promise<AuthResponse> {
+  async login(dto: LoginDto, ctx: RequestContext): Promise<AuthResponse> {
     const user = await this.usersService.findByEmailWithPassword(dto.email);
+    // Login detection: 429 while the email or IP is locked.
+    await this.loginDetector.assertNotLocked(dto.email, user, ctx);
     const passwordMatches = await verifyPassword(
       user?.passwordHash ?? (await this.dummyHash),
       dto.password,
     );
-    if (!user || !passwordMatches) {
+    // Login detection: records the attempt and runs the 9 rules (may answer 429).
+    const verdict = await this.loginDetector.recordAttempt({
+      email: dto.email,
+      user,
+      success: !!user && passwordMatches,
+      ctx,
+    });
+    if (verdict.revokeSessions && user) {
+      await this.refreshTokens.revokeAllForUser(user.id);
+    }
+    if (!user || !verdict.issueToken) {
       throw new UnauthorizedException(INVALID_CREDENTIALS);
     }
     return this.buildResponse(user, await this.refreshTokens.issue(user.id));

@@ -8,11 +8,13 @@ import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
 import { RefreshToken } from './entities/refresh-token.entity.js';
 import { JwtStrategy } from './jwt.strategy.js';
+import { LoginDetectionModule } from './login-detection.module.js';
 import { RefreshTokensService } from './refresh-tokens.service.js';
 
 @Module({
   imports: [
     UsersModule,
+    LoginDetectionModule,
     TypeOrmModule.forFeature([RefreshToken]),
     PassportModule,
     JwtModule.registerAsync({

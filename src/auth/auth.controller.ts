@@ -5,13 +5,16 @@ import {
   HttpCode,
   HttpStatus,
   Post,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
+import type { Request } from 'express';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import { Public } from '../common/decorators/public.decorator.js';
 import type { AuthUser } from '../common/types/auth-user.type.js';
 import { AuthService } from './auth.service.js';
+import { getRequestContext } from './detection/request-context.js';
 import { LoginDto } from './dto/login.dto.js';
 import { RefreshTokenDto } from './dto/refresh-token.dto.js';
 import { RegisterDto } from './dto/register.dto.js';
@@ -40,8 +43,8 @@ export class AuthController {
   @Throttle({ default: { limit: 5, ttl: MINUTE_MS } })
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  login(@Body() dto: LoginDto) {
-    return this.authService.login(dto);
+  login(@Body() dto: LoginDto, @Req() req: Request) {
+    return this.authService.login(dto, getRequestContext(req));
   }
 
   /** Swaps a refresh token for a new access + refresh token pair. */
