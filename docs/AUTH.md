@@ -152,14 +152,14 @@ Two guards run on every route, in this order:
 
 Routes without `@Roles` are open to any logged-in user.
 
-### Protected routes look like they don't exist
+### Failure responses
 
-To stop attackers mapping the API, some failures return the exact 404 Nest gives for a route that doesn't exist (`{"message":"Cannot GET /audit","error":"Not Found","statusCode":404}`), with identical headers:
+A request with no token gets the exact 404 Nest gives for a route that doesn't exist (`{"message":"Cannot GET /audit","error":"Not Found","statusCode":404}`), so anonymous probing can't map the API:
 
 | Situation | Response |
 |---|---|
 | No `Authorization: Bearer ...` header on a protected route | 404, same as an unknown route |
-| Logged in, but the wrong role | 404, same as an unknown route |
+| Logged in, but the wrong role | 403 Forbidden (required by the role-2 spec) |
 | Bearer token present but invalid or expired | 401, so clients know to refresh |
 
 The real reason is logged server-side as a warning.
@@ -184,7 +184,7 @@ export class AlertsController {
   updateStatus(@Param('id') id: string, @CurrentUser('id') userId: string) {}
 
   @Delete(':id')
-  @Roles(UserRole.ADMIN)                    // admin only; others get 404
+  @Roles(UserRole.ADMIN)                    // admin only; others get 403
   remove(@Param('id') id: string) {}
 }
 ```
@@ -214,10 +214,10 @@ ingest(@Req() req: Request) {
 ```
 
 - The key goes in the `x-api-key` header. A missing, unknown or inactive key gets `401`.
-- Keys are random 256-bit values prefixed `sa_`, from `SourcesService.generateApiKey()`. Only their SHA-256 hash is stored, so a key is shown once, when the source is created.
+- Keys are random 256-bit values prefixed `sa_`, from `SourcesService.generateApiKey()`. Only a bcrypt hash and the first 11 characters (`apiKeyPrefix`, used to find the source without bcrypt-comparing every row) are stored, so a key is shown once, when the source is created.
 - Unlike JWT routes, a missing key returns 401 rather than 404. `POST /alerts` is the documented entry point for integrations, so hiding it gains nothing, and the 401 helps whoever is setting one up.
 
-`POST /sources` (creating sources and issuing keys) is build step 2.
+Admins create sources and get their keys with `POST /sources`. See [`ALERTS.md`](./ALERTS.md).
 
 ## Error responses
 
@@ -225,7 +225,8 @@ ingest(@Req() req: Request) {
 |---|---|
 | 400 | Invalid body, or fields that aren't allowed |
 | 401 | Wrong login, bad or expired token, bad refresh token, bad API key |
-| 404 | Unknown route, **or** a protected route with no token or the wrong role |
+| 403 | Logged in, but the wrong role |
+| 404 | Unknown route, **or** a protected route with no token |
 | 409 | Email already registered |
 | 429 | Rate limit exceeded. Wait for the seconds in `Retry-After`. |
 
@@ -262,7 +263,7 @@ node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
 | Privilege escalation | Registration can't set a role. Admins come only from `npm run seed:admin`. |
 | Token theft | Short access tokens. Single-use refresh tokens with reuse detection. Only hashes stored. |
 | Token forgery | Algorithm pinned to HS256. Startup rejects weak secrets. |
-| Route discovery | Protected routes return the same 404 as unknown routes |
+| Route discovery | Protected routes return the same 404 as unknown routes when there is no token |
 | Brute force | Per-IP rate limits on every auth route |
 | HTTP hardening | `helmet` security headers. CORS off by default. `X-Powered-By` removed. |
 | Input | Global validation. Unknown fields rejected. |
