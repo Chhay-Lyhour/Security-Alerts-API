@@ -217,7 +217,7 @@ ingest(@Req() req: Request) {
 - Keys are random 256-bit values prefixed `sa_`, from `SourcesService.generateApiKey()`. Only their SHA-256 hash is stored, so a key is shown once, when the source is created.
 - Unlike JWT routes, a missing key returns 401 rather than 404. `POST /alerts` is the documented entry point for integrations, so hiding it gains nothing, and the 401 helps whoever is setting one up.
 
-`POST /sources` (creating sources and issuing keys) is build step 2.
+Admins create sources and get their keys with `POST /sources`. See [`ALERTS.md`](./ALERTS.md).
 
 ## Error responses
 
