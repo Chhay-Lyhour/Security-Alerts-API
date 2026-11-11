@@ -1,12 +1,18 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import * as bcrypt from 'bcrypt';
+import { randomBytes } from 'node:crypto';
 import { Repository } from 'typeorm';
-import { randomToken, sha256Hex } from '../common/crypto.util.js';
 import type { CreateSourceDto } from './dto/create-source.dto.js';
 import { Source } from './entities/source.entity.js';
 
 /** What `POST /sources` returns. `apiKey` is shown this one time only. */
 export type CreatedSource = Omit<Source, 'apiKeyHash'> & { apiKey: string };
+
+const KEY_PREFIX = 'sa_';
+/** `sa_` plus 8 random characters, stored in plain text for the lookup. */
+const LOOKUP_PREFIX_LENGTH = KEY_PREFIX.length + 8;
+const BCRYPT_ROUNDS = 10;
 
 @Injectable()
 export class SourcesService {
@@ -15,20 +21,35 @@ export class SourcesService {
   ) {}
 
   static generateApiKey(): string {
-    return randomToken('sa_');
+    return `${KEY_PREFIX}${randomBytes(32).toString('base64url')}`;
   }
 
-  /** API keys are 256-bit random values, so we look them up by their SHA-256. */
-  findActiveByApiKey(apiKey: string): Promise<Source | null> {
-    return this.sources.findOne({
-      where: { apiKeyHash: sha256Hex(apiKey), isActive: true },
-    });
+  static lookupPrefix(apiKey: string): string {
+    return apiKey.slice(0, LOOKUP_PREFIX_LENGTH);
   }
 
-  /**
-   * Registers a source and issues its API key. Only the hash is stored, so the
-   * raw key cannot be shown again; a lost key means registering a new source.
-   */
+
+  async findActiveByApiKey(apiKey: string): Promise<Source | null> {
+    if (!apiKey.startsWith(KEY_PREFIX)) return null;
+
+    const candidates = await this.sources
+      .createQueryBuilder('source')
+      .addSelect('source.apiKeyHash')
+      .where('source.apiKeyPrefix = :prefix', {
+        prefix: SourcesService.lookupPrefix(apiKey),
+      })
+      .andWhere('source.isActive = true')
+      .getMany();
+
+    for (const candidate of candidates) {
+      if (await bcrypt.compare(apiKey, candidate.apiKeyHash)) {
+        const { apiKeyHash: _omit, ...safe } = candidate;
+        return safe as Source;
+      }
+    }
+    return null;
+  }
+
   async create(dto: CreateSourceDto): Promise<CreatedSource> {
     const existing = await this.sources.findOne({ where: { name: dto.name } });
     if (existing) {
@@ -37,13 +58,16 @@ export class SourcesService {
 
     const apiKey = SourcesService.generateApiKey();
     const saved = await this.sources.save(
-      this.sources.create({ name: dto.name, apiKeyHash: sha256Hex(apiKey) }),
+      this.sources.create({
+        name: dto.name,
+        apiKeyPrefix: SourcesService.lookupPrefix(apiKey),
+        apiKeyHash: await bcrypt.hash(apiKey, BCRYPT_ROUNDS),
+      }),
     );
     const { apiKeyHash: _omit, ...safe } = saved;
     return { ...safe, apiKey };
   }
 
-  /** Newest first. `apiKeyHash` is never selected (see the entity). */
   findAll(): Promise<Source[]> {
     return this.sources.find({ order: { createdAt: 'DESC' } });
   }

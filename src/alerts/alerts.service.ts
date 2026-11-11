@@ -29,10 +29,11 @@ import {
 
 export type Paginated<T> = {
   data: T[];
-  meta: { page: number; limit: number; total: number; totalPages: number };
+  total: number;
+  page: number;
+  limit: number;
 };
 
-/** Statuses only move forward: open → acknowledged → resolved (or open → resolved). */
 const ALLOWED_TRANSITIONS: Record<AlertStatus, AlertStatus[]> = {
   [AlertStatus.OPEN]: [AlertStatus.ACKNOWLEDGED, AlertStatus.RESOLVED],
   [AlertStatus.ACKNOWLEDGED]: [AlertStatus.RESOLVED],
@@ -46,7 +47,6 @@ export class AlertsService {
     private readonly events: EventEmitter2,
   ) {}
 
-  /** Saves an alert from an authenticated source and fires `alert.created`. */
   async ingest(source: Source, dto: CreateAlertDto): Promise<Alert> {
     const alert = await this.alerts.save(
       this.alerts.create({
@@ -59,7 +59,15 @@ export class AlertsService {
         sourceId: source.id,
       }),
     );
-    this.events.emit(ALERT_CREATED, new AlertCreatedEvent(alert));
+    this.events.emit(
+      ALERT_CREATED,
+      new AlertCreatedEvent(
+        alert.id,
+        alert.type,
+        alert.severity,
+        alert.ipAddress,
+      ),
+    );
     return alert;
   }
 
@@ -71,10 +79,7 @@ export class AlertsService {
       skip: (page - 1) * limit,
       take: limit,
     });
-    return {
-      data,
-      meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
-    };
+    return { data, total, page, limit };
   }
 
   async findOne(id: string): Promise<Alert> {
@@ -83,11 +88,6 @@ export class AlertsService {
     return alert;
   }
 
-  /**
-   * Moves an alert forward and fires `alert.status_changed` with who did it.
-   * The update is conditional on the status we read, so two analysts acting at
-   * once cannot both succeed.
-   */
   async updateStatus(
     id: string,
     to: AlertStatus,

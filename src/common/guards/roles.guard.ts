@@ -1,13 +1,13 @@
 import {
   CanActivate,
   ExecutionContext,
+  ForbiddenException,
   Injectable,
   Logger,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 import { ROLES_KEY } from '../decorators/roles.decorator.js';
-import { routeNotFound } from '../http/route-not-found.js';
 import type { UserRole } from '../../users/entities/user-role.enum.js';
 import type { AuthUser } from '../types/auth-user.type.js';
 
@@ -15,9 +15,8 @@ import type { AuthUser } from '../types/auth-user.type.js';
  * Global guard that enforces `@Roles(...)`. Routes without the decorator are
  * open to any authenticated user. Runs after JwtAuthGuard.
  *
- * A caller without the required role gets the same 404 Nest returns for a
- * route that does not exist, rather than a 403, so role-restricted routes
- * cannot be discovered by probing. The real reason is logged server-side.
+ * A logged-in caller without the required role gets 403 Forbidden. The
+ * details are logged server-side.
  */
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -39,6 +38,6 @@ export class RolesGuard implements CanActivate {
     this.logger.warn(
       `Role check failed: ${request.method} ${request.originalUrl} user=${user?.id ?? 'none'} role=${user?.role ?? 'none'} required=${required.join('|')} ip=${request.ip}`,
     );
-    throw routeNotFound(request);
+    throw new ForbiddenException('You do not have permission for this action');
   }
 }

@@ -14,7 +14,6 @@ import { AlertSeverity } from '../entities/alert-severity.enum.js';
 const trim = ({ value }: { value: unknown }) =>
   typeof value === 'string' ? value.trim() : value;
 
-/** Body of `POST /alerts`. The source comes from the API key, never the body. */
 export class CreateAlertDto {
   @Transform(trim)
   @IsString()

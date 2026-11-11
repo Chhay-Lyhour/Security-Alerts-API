@@ -1,24 +1,11 @@
 import { Type } from 'class-transformer';
-import {
-  IsEnum,
-  IsIP,
-  IsInt,
-  IsISO8601,
-  IsOptional,
-  IsString,
-  IsUUID,
-  Matches,
-  Max,
-  MaxLength,
-  Min,
-} from 'class-validator';
+import { IsEnum, IsIP, IsInt, IsISO8601, IsOptional, IsString, IsUUID, Matches, Max, MaxLength, Min,} from 'class-validator';
 import { AlertSeverity } from '../entities/alert-severity.enum.js';
 import { AlertStatus } from '../entities/alert-status.enum.js';
 
 export const DEFAULT_PAGE_SIZE = 20;
 export const MAX_PAGE_SIZE = 100;
 
-/** Query string of `GET /alerts`. Every filter is optional and they combine with AND. */
 export class QueryAlertsDto {
   @IsOptional()
   @IsEnum(AlertSeverity)

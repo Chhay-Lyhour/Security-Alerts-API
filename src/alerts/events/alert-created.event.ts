@@ -1,11 +1,12 @@
-import type { Alert } from '../entities/alert.entity.js';
+import type { AlertSeverity } from '../entities/alert-severity.enum.js';
 
 export const ALERT_CREATED = 'alert.created';
 
-/**
- * Fired after an alert is saved. The rule engine (build step 4) listens for it
- * to check thresholds; nothing in the ingest request waits on listeners.
- */
 export class AlertCreatedEvent {
-  constructor(public readonly alert: Alert) {}
+  constructor(
+    public readonly alertId: string,
+    public readonly type: string,
+    public readonly severity: AlertSeverity,
+    public readonly ipAddress: string | null,
+  ) {}
 }

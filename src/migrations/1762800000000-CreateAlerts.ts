@@ -30,10 +30,7 @@ export class CreateAlerts1762800000000 implements MigrationInterface {
       `CREATE INDEX "IDX_alerts_createdAt" ON "alerts" ("createdAt")`,
     );
     await queryRunner.query(
-      `CREATE INDEX "IDX_alerts_severity" ON "alerts" ("severity")`,
-    );
-    await queryRunner.query(
-      `CREATE INDEX "IDX_alerts_status" ON "alerts" ("status")`,
+      `CREATE INDEX "IDX_alerts_severity_status" ON "alerts" ("severity", "status")`,
     );
     await queryRunner.query(
       `CREATE INDEX "IDX_alerts_sourceId" ON "alerts" ("sourceId")`,

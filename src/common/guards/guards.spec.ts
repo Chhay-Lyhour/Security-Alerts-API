@@ -1,6 +1,6 @@
 import {
   ExecutionContext,
-  NotFoundException,
+  ForbiddenException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
@@ -40,24 +40,21 @@ describe('RolesGuard', () => {
     expect(guard.canActivate(contextFor({ user: { role: UserRole.ANALYST } }))).toBe(true);
   });
 
-  it('hides the route from a user without the role, using the same 404 as an unknown route', () => {
+  it('answers 403 to a user without the role', () => {
     const guard = new RolesGuard(reflectorReturning(ROLES_KEY, [UserRole.ADMIN]));
     const request = {
       method: 'DELETE',
       originalUrl: '/alerts/123?x=1',
       user: { id: 'u1', role: UserRole.ANALYST },
     };
-    expect(() => guard.canActivate(contextFor(request))).toThrow(NotFoundException);
-    expect(() => guard.canActivate(contextFor(request))).toThrow(
-      'Cannot DELETE /alerts/123?x=1',
-    );
+    expect(() => guard.canActivate(contextFor(request))).toThrow(ForbiddenException);
   });
 
-  it('hides the route when there is no user', () => {
+  it('answers 403 when there is no user', () => {
     const guard = new RolesGuard(reflectorReturning(ROLES_KEY, [UserRole.ADMIN]));
     expect(() =>
       guard.canActivate(contextFor({ method: 'GET', originalUrl: '/audit' })),
-    ).toThrow(NotFoundException);
+    ).toThrow(ForbiddenException);
   });
 });
 

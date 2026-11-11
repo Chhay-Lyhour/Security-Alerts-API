@@ -1,18 +1,4 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  HttpCode,
-  HttpStatus,
-  Param,
-  ParseUUIDPipe,
-  Patch,
-  Post,
-  Query,
-  Req,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Patch, Post, Query, Req, UseGuards} from '@nestjs/common';
 import type { Request } from 'express';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import { Public } from '../common/decorators/public.decorator.js';
@@ -28,16 +14,13 @@ import { UpdateAlertStatusDto } from './dto/update-alert-status.dto.js';
 export class AlertsController {
   constructor(private readonly alertsService: AlertsService) {}
 
-  /** Ingest. External systems authenticate with `x-api-key`, not a JWT. */
   @Public()
   @UseGuards(ApiKeyGuard)
   @Post()
   ingest(@Req() req: Request, @Body() dto: CreateAlertDto) {
-    // ApiKeyGuard always sets req.source before this runs.
     return this.alertsService.ingest(req.source!, dto);
   }
-
-  /** `GET /alerts?severity=high&status=open&from=...&to=...&page=1&limit=20` */
+  
   @Get()
   @Roles(UserRole.ADMIN, UserRole.ANALYST)
   findAll(@Query() query: QueryAlertsDto) {

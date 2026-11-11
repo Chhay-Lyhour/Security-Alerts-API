@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import type { EventEmitter2 } from '@nestjs/event-emitter';
 import type { Repository } from 'typeorm';
 import type { Source } from '../sources/entities/source.entity.js';
@@ -11,10 +7,7 @@ import { QueryAlertsDto } from './dto/query-alerts.dto.js';
 import { AlertSeverity } from './entities/alert-severity.enum.js';
 import { AlertStatus } from './entities/alert-status.enum.js';
 import type { Alert } from './entities/alert.entity.js';
-import {
-  ALERT_CREATED,
-  AlertCreatedEvent,
-} from './events/alert-created.event.js';
+import { ALERT_CREATED, AlertCreatedEvent} from './events/alert-created.event.js';
 import { ALERT_STATUS_CHANGED } from './events/alert-status-changed.event.js';
 
 const source = { id: 'src-1', name: 'web-1' } as Source;
@@ -77,7 +70,12 @@ describe('AlertsService', () => {
       );
       expect(events.emit).toHaveBeenCalledWith(
         ALERT_CREATED,
-        new AlertCreatedEvent(alert),
+        new AlertCreatedEvent(
+          alert.id,
+          'failed_login',
+          AlertSeverity.HIGH,
+          '10.0.0.1',
+        ),
       );
     });
   });
@@ -91,11 +89,11 @@ describe('AlertsService', () => {
       expect(repo.findAndCount).toHaveBeenCalledWith(
         expect.objectContaining({ skip: 0, take: 20, where: {} }),
       );
-      expect(result.meta).toEqual({
+      expect(result).toEqual({
+        data: [storedAlert()],
+        total: 45,
         page: 1,
         limit: 20,
-        total: 45,
-        totalPages: 3,
       });
     });
 

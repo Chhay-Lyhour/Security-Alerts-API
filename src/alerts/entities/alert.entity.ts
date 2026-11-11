@@ -10,7 +10,7 @@ import {
 import { Source } from '../../sources/entities/source.entity.js';
 import { AlertSeverity } from './alert-severity.enum.js';
 import { AlertStatus } from './alert-status.enum.js';
-
+@Index('IDX_alerts_severity_status', ['severity', 'status'])
 @Entity('alerts')
 export class Alert {
   @PrimaryGeneratedColumn('uuid')
@@ -19,25 +19,21 @@ export class Alert {
   @Column({ type: 'varchar', length: 200 })
   title: string;
 
-  @Index('IDX_alerts_severity')
   @Column({
     type: 'enum',
     enum: AlertSeverity,
   })
   severity: AlertSeverity;
 
-  /** Machine-readable kind, e.g. `failed_login` or `port_scan`. Rules match on it. */
   @Column({ type: 'varchar', length: 64 })
   type: string;
 
   @Column({ type: 'varchar', length: 45, nullable: true })
   ipAddress: string | null;
 
-  /** Whatever extra detail the source sent. */
   @Column({ type: 'jsonb', default: () => `'{}'` })
   payload: Record<string, unknown>;
 
-  @Index('IDX_alerts_status')
   @Column({
     type: 'enum',
     enum: AlertStatus,
