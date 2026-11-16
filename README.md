@@ -92,7 +92,7 @@ Then walk through it:
 7. **Review.** As the admin, open `GET /audit`. It shows the rule and source creation, the system's automatic block, the acknowledgement and the refused attempt. Then `GET /firewall/blocked-ips` shows the block, and `DELETE /firewall/blocked-ips/:id` lifts it.
 8. **Tests.** Run `npm test` and show the unit tests for the rules passing.
 
-To send real notifications, set `SLACK_WEBHOOK_URL`, `DISCORD_WEBHOOK_URL` or the `SMTP_*` settings in `.env`. Without them the API logs that nothing was sent.
+To send real notifications, set `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` (step-by-step: [docs/TELEGRAM.md](./docs/TELEGRAM.md), including how to find a group chat id), `SLACK_WEBHOOK_URL`, `DISCORD_WEBHOOK_URL` or the `SMTP_*` settings in `.env`. Without them the API logs that nothing was sent.
 
 ## Run without Docker
 

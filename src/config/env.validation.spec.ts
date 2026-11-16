@@ -68,4 +68,25 @@ describe('validateEnv', () => {
   ])('rejects bad firewall or migration settings: %o', (env, message) => {
     expect(() => validateEnv({ JWT_SECRET: goodSecret, ...env })).toThrow(message);
   });
+
+  it('accepts Telegram settings for a group or a channel', () => {
+    for (const chat of ['-1001234567890', '123456789', '@security_alerts']) {
+      expect(() =>
+        validateEnv({
+          JWT_SECRET: goodSecret,
+          TELEGRAM_BOT_TOKEN: '123456789:AAFake_token-XYZ',
+          TELEGRAM_CHAT_ID: chat,
+        }),
+      ).not.toThrow();
+    }
+  });
+
+  it.each([
+    [{ TELEGRAM_BOT_TOKEN: '123456789:AAFake' }, 'must be set together'],
+    [{ TELEGRAM_CHAT_ID: '-100123' }, 'must be set together'],
+    [{ TELEGRAM_BOT_TOKEN: 'not-a-token', TELEGRAM_CHAT_ID: '-100123' }, 'TELEGRAM_BOT_TOKEN must look like'],
+    [{ TELEGRAM_BOT_TOKEN: '123456789:AAFake', TELEGRAM_CHAT_ID: 'my group' }, 'TELEGRAM_CHAT_ID must be'],
+  ])('rejects bad Telegram settings: %o', (env, message) => {
+    expect(() => validateEnv({ JWT_SECRET: goodSecret, ...env })).toThrow(message);
+  });
 });
