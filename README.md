@@ -33,7 +33,7 @@ For the full design, see [`SPECS.md`](./SPECS.md). Each area has its own guide i
 
 ## Run with Docker (recommended)
 
-You only need [Docker Desktop](https://www.docker.com/products/docker-desktop/). It runs the API, PostgreSQL, Redis and the demo bank together.
+You only need [Docker Desktop](https://www.docker.com/products/docker-desktop/). It runs the API, PostgreSQL, Redis, the demo bank and a Grafana dashboard together.
 
 ```bash
 cp .env.example .env
@@ -50,7 +50,9 @@ curl http://localhost:3000/health
 # {"status":"ok","checks":{"database":"up","redis":"up"}}
 ```
 
-If a port is already in use on your machine, change `API_HOST_PORT`, `BANK_HOST_PORT`, `POSTGRES_HOST_PORT` or `REDIS_HOST_PORT` in `.env`.
+The live dashboard is at http://localhost:3030 (`admin` / `admin`). See [docs/GRAFANA.md](./docs/GRAFANA.md).
+
+If a port is already in use on your machine, change `API_HOST_PORT`, `BANK_HOST_PORT`, `POSTGRES_HOST_PORT`, `REDIS_HOST_PORT` or `GRAFANA_HOST_PORT` in `.env`.
 
 | Command | What it does |
 |---|---|
@@ -89,7 +91,7 @@ Then walk through it:
      -H 'Content-Type: application/json' -d '{"status":"acknowledged"}'
    ```
 6. **Privilege check.** The analyst tries `GET /audit` and gets `403`. That attempt is recorded too.
-7. **Review.** As the admin, open `GET /audit`. It shows the rule and source creation, the system's automatic block, the acknowledgement and the refused attempt. Then `GET /firewall/blocked-ips` shows the block, and `DELETE /firewall/blocked-ips/:id` lifts it.
+7. **Review.** Open the Grafana dashboard at http://localhost:3030: the failed logins, the escalated alert, the block and the Telegram notification are all there. As the admin, open `GET /audit`. It shows the rule and source creation, the system's automatic block, the acknowledgement and the refused attempt. Then `GET /firewall/blocked-ips` shows the block, and `DELETE /firewall/blocked-ips/:id` lifts it.
 8. **Tests.** Run `npm test` and show the unit tests for the rules passing.
 
 To send real notifications, set `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` (step-by-step: [docs/TELEGRAM.md](./docs/TELEGRAM.md), including how to find a group chat id), `SLACK_WEBHOOK_URL`, `DISCORD_WEBHOOK_URL` or the `SMTP_*` settings in `.env`. Without them the API logs that nothing was sent.
