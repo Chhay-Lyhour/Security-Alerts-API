@@ -1,0 +1,21 @@
+# Loaded by Grafana on start. Values come from the grafana service's
+# environment in docker-compose.yml.
+apiVersion: 1
+
+datasources:
+  - name: Security Alerts DB
+    uid: security-alerts-db
+    type: grafana-postgresql-datasource
+    access: proxy
+    url: ${SA_DB_HOST}
+    user: ${SA_DB_USER}
+    isDefault: true
+    editable: false
+    jsonData:
+      database: ${SA_DB_NAME}
+      sslmode: disable
+      postgresVersion: 1500
+      timescaledb: false
+      maxOpenConns: 5
+    secureJsonData:
+      password: ${SA_DB_PASSWORD}
