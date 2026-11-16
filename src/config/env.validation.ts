@@ -55,6 +55,17 @@ export const validateEnv = (env: RawEnv): RawEnv => {
       errors.push(`${key} must be an https:// URL`);
     }
   }
+  const telegramToken = text(env, 'TELEGRAM_BOT_TOKEN');
+  const telegramChat = text(env, 'TELEGRAM_CHAT_ID');
+  if ((telegramToken === undefined) !== (telegramChat === undefined)) {
+    errors.push('TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID must be set together to enable Telegram notifications');
+  }
+  if (telegramToken !== undefined && !/^\d+:[\w-]+$/.test(telegramToken)) {
+    errors.push('TELEGRAM_BOT_TOKEN must look like 123456789:ABCdef... (from @BotFather)');
+  }
+  if (telegramChat !== undefined && !/^(-?\d+|@\w{5,})$/.test(telegramChat)) {
+    errors.push('TELEGRAM_CHAT_ID must be a numeric chat id (groups start with -) or a @channelname');
+  }
   checkPositiveInt(env, 'SMTP_PORT', errors);
   if ((text(env, 'SMTP_HOST') === undefined) !== (text(env, 'ALERT_EMAIL_TO') === undefined)) {
     errors.push('SMTP_HOST and ALERT_EMAIL_TO must be set together to enable email notifications');
