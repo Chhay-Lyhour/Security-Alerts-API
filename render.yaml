@@ -1,0 +1,78 @@
+# Render Blueprint: deploys the API, Postgres and Redis on Render's free plan.
+# See docs/DEPLOY.md for the steps.
+#
+# Free-plan limits: the API sleeps after 15 minutes without requests (the next
+# request takes about a minute to wake it), and the free database expires
+# 30 days after it is created.
+
+services:
+  - type: web
+    name: security-alerts-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_HOST
+        fromDatabase:
+          name: security-alerts-db
+          property: host
+      - key: DATABASE_PORT
+        fromDatabase:
+          name: security-alerts-db
+          property: port
+      - key: DATABASE_USER
+        fromDatabase:
+          name: security-alerts-db
+          property: user
+      - key: DATABASE_PASSWORD
+        fromDatabase:
+          name: security-alerts-db
+          property: password
+      - key: DATABASE_NAME
+        fromDatabase:
+          name: security-alerts-db
+          property: database
+      - key: REDIS_HOST
+        fromService:
+          type: keyvalue
+          name: security-alerts-redis
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          type: keyvalue
+          name: security-alerts-redis
+          property: port
+      # Bring the schema up to date on every start.
+      - key: DATABASE_RUN_MIGRATIONS
+        value: 'true'
+      # Render creates a random secret once and keeps it.
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_ACCESS_EXPIRES_IN_SECONDS
+        value: '900'
+      - key: REFRESH_TOKEN_TTL_DAYS
+        value: '7'
+      # Render's load balancer sits in front of the app.
+      - key: TRUST_PROXY
+        value: '1'
+      - key: FIREWALL_AUTO_BLOCK_MINUTES
+        value: '60'
+      # Only needed if a browser app calls the API directly; asked for on deploy.
+      - key: CORS_ORIGINS
+        sync: false
+
+  - type: keyvalue
+    name: security-alerts-redis
+    plan: free
+    # BullMQ needs Redis to never evict its job keys.
+    maxmemoryPolicy: noeviction
+    # Reachable only from other Render services, not from the internet.
+    ipAllowList: []
+
+databases:
+  - name: security-alerts-db
+    plan: free
+    databaseName: security_alerts
+    # Left open (password and TLS required) so the first admin can be seeded
+    # from a laptop; see docs/DEPLOY.md.
