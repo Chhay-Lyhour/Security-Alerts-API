@@ -96,6 +96,10 @@ Then walk through it:
 
 To send real notifications, set `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` (step-by-step: [docs/TELEGRAM.md](./docs/TELEGRAM.md), including how to find a group chat id), `SLACK_WEBHOOK_URL`, `DISCORD_WEBHOOK_URL` or the `SMTP_*` settings in `.env`. Without them the API logs that nothing was sent.
 
+## Deploy
+
+`render.yaml` deploys the API, Postgres and Redis to Render's free plan in one click. See [docs/DEPLOY.md](./docs/DEPLOY.md).
+
 ## Run without Docker
 
 You need Node.js 22+, PostgreSQL 14+ and Redis 6+. Alternatively, run only the databases in Docker with `docker compose up -d postgres redis`.
