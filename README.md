@@ -4,7 +4,7 @@ A security layer that other apps plug into, built with **NestJS**, **PostgreSQL*
 
 An integrated app (for example a bank's website) sends its security events here. The API stores them and detects attack patterns. It notifies the security team and blocks the attacker's IP. Analysts acknowledge or resolve each alert, and every privileged action goes into a tamper-proof audit trail.
 
-For the full design, see [`SPECS.md`](./SPECS.md). Each area has its own guide in [`docs/`](./docs).
+For the full design, see [`SPECS.md`](./SPECS.md). Each area has its own guide in [`docs/`](./docs). Every endpoint is listed in the [API reference](./docs/API.md).
 
 ## How it fits together
 
