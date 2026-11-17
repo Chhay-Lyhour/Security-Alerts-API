@@ -53,9 +53,11 @@ services:
         value: '900'
       - key: REFRESH_TOKEN_TTL_DAYS
         value: '7'
-      # Render's load balancer sits in front of the app.
+      # Requests pass through two proxies on Render (its edge, then an
+      # internal load balancer). With 1, every request looked like it came
+      # from a 10.x address.
       - key: TRUST_PROXY
-        value: '1'
+        value: '2'
       - key: FIREWALL_AUTO_BLOCK_MINUTES
         value: '60'
       # Only needed if a browser app calls the API directly; asked for on deploy.
