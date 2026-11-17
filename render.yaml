@@ -53,11 +53,11 @@ services:
         value: '900'
       - key: REFRESH_TOKEN_TTL_DAYS
         value: '7'
-      # Requests pass through two proxies on Render (its edge, then an
-      # internal load balancer). With 1, every request looked like it came
-      # from a 10.x address.
+      # Requests pass through three proxies: Cloudflare, Render's load
+      # balancer, then an internal hop. With fewer, the audit log recorded
+      # a 10.x or Cloudflare address instead of the visitor's.
       - key: TRUST_PROXY
-        value: '2'
+        value: '3'
       - key: FIREWALL_AUTO_BLOCK_MINUTES
         value: '60'
       # Only needed if a browser app calls the API directly; asked for on deploy.
