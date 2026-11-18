@@ -93,11 +93,12 @@ describe('Sources and alerts (e2e)', () => {
       expect(list.body[0]).not.toHaveProperty('apiKey');
     });
 
-    it('answers 403 to an analyst', async () => {
+    it('lets an analyst list sources (without keys) but not create one', async () => {
       await asAnalyst(http().post('/sources'))
         .send({ name: 'web-2' })
         .expect(403);
-      await asAnalyst(http().get('/sources')).expect(403);
+      const list = await asAnalyst(http().get('/sources')).expect(200);
+      expect(list.body[0]).not.toHaveProperty('apiKeyHash');
     });
   });
 

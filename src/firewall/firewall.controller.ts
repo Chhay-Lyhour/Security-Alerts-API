@@ -60,7 +60,8 @@ export class FirewallController {
     );
   }
 
-  @Roles(UserRole.ADMIN)
+  // Analysts may see who is blocked; only admins block and unblock.
+  @Roles(UserRole.ADMIN, UserRole.ANALYST)
   @Get('blocked-ips')
   list() {
     return this.firewall.list();
