@@ -136,7 +136,7 @@
   <!-- USERS -->
   <section id="tab-users" class="tab" hidden>
     <div class="bar"><h2>Users</h2><button type="button" class="btn ghost sm" data-refresh="users">Refresh</button></div>
-    <p class="muted">There is no public sign-up. Admins create every account and choose its role. Role changes apply on the user's next request, and both are recorded in the audit trail.</p>
+    <p class="muted">There is no public sign-up. Admins create every account and choose its role. Role changes and deletions apply on the user's next request, and all of them are recorded in the audit trail.</p>
     <form class="card form-row" id="user-form">
       <label>Email<input name="email" type="email" required maxlength="255" autocomplete="off"></label>
       <label>Temporary password<input name="password" type="password" required minlength="12" maxlength="128" autocomplete="new-password" placeholder="12+ characters"></label>
@@ -146,7 +146,7 @@
     </form>
     <div class="card explain">
       <div><h4>Analyst</h4><p class="muted small">Sees alerts, the live pipeline, blocks, lockouts and rules. Can acknowledge and resolve alerts.</p></div>
-      <div><h4>Admin</h4><p class="muted small">Everything an analyst can do, plus: create users and change roles, block and unblock IPs, lift lockouts, change rules, register sources, delete alerts, read the audit trail.</p></div>
+      <div><h4>Admin</h4><p class="muted small">Everything an analyst can do, plus: create, delete and change the role of users, block and unblock IPs, lift lockouts, change rules, register sources, delete alerts, read the audit trail.</p></div>
     </div>
     <div class="scroll" style="margin-top:16px"><table class="grid" id="users-table"></table></div>
   </section>

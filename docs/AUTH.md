@@ -32,7 +32,8 @@ There is no public sign-up. Every account is created by an admin, who chooses it
 
 - `POST /users` with `{ "email", "password", "role" }` (role `analyst` by default), or the **Users** tab of the [dashboard](./DASHBOARD.md).
 - `PATCH /users/:id/role` changes a role. An admin can't change their own, so the last admin can't lock everyone out. The new role applies on the user's next request, because every request re-reads the user.
-- Both are recorded in the [audit trail](./AUDIT.md) as `created_user` and `changed_user_role`, with the email and role but never the password.
+- `DELETE /users/:id` deletes an account (not your own). Its sessions and devices go with it, so it's signed out everywhere at once, even with an unexpired token. Its login attempts stay, unlinked, and the audit trail keeps its email.
+- All three are recorded in the [audit trail](./AUDIT.md) as `created_user`, `changed_user_role` and `deleted_user`, with the email and role but never the password.
 
 The **first** admin can't come from the API (there's no admin yet to call it), so it's created from the command line, which needs access to the server and its database:
 

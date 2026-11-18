@@ -36,7 +36,7 @@ The other tabs:
 - **Firewall**: active blocks; admins add a block (an IP or range, optional minutes) or lift one.
 - **Login engine**: how a score is built (each fired rule adds low 10, medium 25, high 50, critical 100), active lockouts, and every attempt with the rules that fired.
 - **Rules**: alert rules for connected apps (admins can turn them on and off) and the nine login detection rules with their live thresholds.
-- **Users** (admins): create accounts and change roles. You can't change your own role.
+- **Users** (admins): create accounts, change roles and delete accounts. You can't change or delete your own.
 - **Audit** (admins): the append-only trail.
 
 ## Show it working

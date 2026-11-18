@@ -60,6 +60,16 @@ export class UsersService {
     return this.users.find({ order: { createdAt: 'DESC' } });
   }
 
+  /**
+   * Deletes the account. Its sessions and devices go with it (FK cascade), so
+   * it is signed out everywhere at once; login history keeps the attempts
+   * without the link, and the audit trail keeps the email.
+   */
+  async remove(userId: string): Promise<boolean> {
+    const result = await this.users.delete({ id: userId });
+    return (result.affected ?? 0) > 0;
+  }
+
   async setRole(userId: string, role: UserRole): Promise<void> {
     await this.users.update({ id: userId }, { role });
   }

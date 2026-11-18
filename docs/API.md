@@ -156,6 +156,7 @@ Separately, login detection can lock an email or IP after repeated failures (`42
 | POST | [`/users`](#post-users) | JWT admin | Create a staff account |
 | GET | `/users` | JWT admin | List staff accounts |
 | PATCH | `/users/:id/role` | JWT admin | Change a role (not your own) |
+| DELETE | `/users/:id` | JWT admin | Delete an account (not your own) |
 | POST | [`/auth/login`](#post-authlogin) | Public | Log in |
 | POST | [`/auth/refresh`](#post-authrefresh) | Public (refresh token) | Swap a refresh token for a new pair |
 | POST | [`/auth/logout`](#post-authlogout) | Public (refresh token) | End the session |
