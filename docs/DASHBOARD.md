@@ -11,8 +11,10 @@ A web page served by the API itself at **`/dashboard/`**: no separate app, no bu
 
 | Role | Can |
 |---|---|
-| **Analyst** (anyone can create one on the sign-in page) | See everything except the audit trail; acknowledge and resolve alerts |
-| **Admin** (created with `npm run seed:admin`) | Also block and unblock IPs, lift login lockouts, turn rules on and off, delete alerts, read the audit trail |
+| **Analyst** | See everything except users and the audit trail; acknowledge and resolve alerts |
+| **Admin** | Also create accounts and change roles, block and unblock IPs, lift login lockouts, turn rules on and off, delete alerts, read the audit trail |
+
+There is no public sign-up. An admin creates every account in the **Users** tab (or with `POST /users`) and shares the password privately. The very first admin is created with `npm run seed:admin`.
 
 Every admin action from the console goes through the same routes as before, so it's checked by role and recorded in the audit trail, including refused attempts.
 
@@ -34,6 +36,7 @@ The other tabs:
 - **Firewall**: active blocks; admins add a block (an IP or range, optional minutes) or lift one.
 - **Login engine**: how a score is built (each fired rule adds low 10, medium 25, high 50, critical 100), active lockouts, and every attempt with the rules that fired.
 - **Rules**: alert rules for connected apps (admins can turn them on and off) and the nine login detection rules with their live thresholds.
+- **Users** (admins): create accounts and change roles. You can't change your own role.
 - **Audit** (admins): the append-only trail.
 
 ## Show it working
@@ -53,3 +56,4 @@ Against the live server, the same thing happens when a connected app (for exampl
 - Signs in with `POST /auth/login` and keeps the access and refresh tokens in `sessionStorage` (gone when the tab closes). On a 401 it refreshes once, then asks to sign in again.
 - Helmet's content security policy stays strict: scripts only from this origin, nothing inline. Every value from the server is escaped before it's shown.
 - Analysts can read sources (names only, never keys), rules and blocked IPs so the console can label and score events; only admins can change them.
+- Alerts raised by the login engine (source `login-detection-engine`) are left out of the Live view's Detect column, because the same sign-in is already shown there as a scored attempt. They're in the Alerts tab.

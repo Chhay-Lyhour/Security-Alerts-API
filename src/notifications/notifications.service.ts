@@ -61,11 +61,11 @@ export class NotificationsService {
         return saved;
     }
 
-    // Loads a notification together with the alert it is about.
+    // Loads a notification with its alert and the alert's source (named in the message).
     async findForDelivery(id: string): Promise<Notification | null> {
         return this.notificationRepository.findOne({
             where: { id },
-            relations: { alert: true },
+            relations: { alert: { source: true } },
         });
     }
 

@@ -198,7 +198,7 @@ Without `X-Device-Id`, two people using the same browser on the same OS share a 
 
 ## Where results go
 
-Until the Alerts module exists (build step 2), detections are stored and logged rather than turned into alerts:
+Every detection is stored and logged. HIGH and CRITICAL ones also become an alert and a notification:
 
 - **`login_attempts.signals`** holds every rule that fired on that attempt, with `riskScore` and `riskLevel` next to it.
 - **The server log** gets one line per risky attempt. HIGH and CRITICAL are warnings:
@@ -223,7 +223,8 @@ A signal looks like this:
 
 Signal types: `brute_force`, `new_device`, `new_country`, `possible_compromise`, `credential_stuffing`, `account_enumeration`, `rapid_logins`, `post_lockout_attempt`, `new_ip`, `unusual_time`, `returning_device`.
 
-When alerts arrive, only `LoginDetectorService.report()` needs to change: each signal becomes an Alert and a notification job.
+- **An alert** (HIGH or CRITICAL only), raised by `LoginAlertsService` on the internal source `login-detection-engine`. Its type is the most severe signal (e.g. `brute_force`) and its payload holds `engine: "login"`, the email, score, action and every signal. That source is inactive and its key was never shown, so no caller can send alerts as it.
+- **A notification** on every configured channel (Telegram, email, Slack, Discord) for that alert, through the same queue and retries as rule escalations. LOW and MEDIUM stay on the attempt row, so the channels only buzz when it matters.
 
 ## Database tables
 
@@ -329,7 +330,6 @@ To try rules by hand without real proxies, run with `TRUST_PROXY=1` and send `X-
 
 | Limitation | Plan |
 |---|---|
-| Detections are not saved as Alerts and no notification is sent | Alerts module (build step 2) and notifications queue (step 4). Only `report()` changes. |
 | Thresholds are constants in code | Move them to the `AlertRule` table (step 4) so they can be tuned without a deploy |
 | No country without a proxy header | Add a GeoIP lookup |
 | The per-IP part of rule 1 (20 failures from one IP in 60 s) can't trigger, because `/auth/login` allows only 5 attempts per minute per IP | Lower the threshold, or rely on rules 4 and 5 for single-IP attacks |

@@ -11,7 +11,7 @@ import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
-import { RegisterDto } from '../auth/dto/register.dto.js';
+import { CreateUserDto } from '../users/dto/create-user.dto.js';
 import { UserRole } from '../users/entities/user-role.enum.js';
 import { UsersService } from '../users/users.service.js';
 import { ask, askHidden } from './prompt.js';
@@ -22,9 +22,9 @@ const emailFromArgs = (): string | undefined => {
   return index >= 0 ? process.argv[index + 1] : undefined;
 };
 
-/** Same rules as POST /auth/register, checked one field at a time. */
+/** Same rules as POST /users, checked one field at a time. */
 const assertValid = async (field: 'email' | 'password', value: string) => {
-  const dto = plainToInstance(RegisterDto, { [field]: value });
+  const dto = plainToInstance(CreateUserDto, { [field]: value });
   const errors = await validate(dto);
   const messages = errors
     .filter((error) => error.property === field)

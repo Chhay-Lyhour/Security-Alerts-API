@@ -3,7 +3,7 @@
 //   npm run demo:setup
 //
 // 1. creates the admin account (inside the api container, via seed-admin)
-// 2. registers an analyst account
+// 2. creates an analyst account (as the admin: there is no public sign-up)
 // 3. creates the rule "5 failed_login in 60s -> high"
 // 4. registers Lotus Demo Bank as a source and saves its API key to .env
 // 5. restarts the bank container so it picks the key up
@@ -108,7 +108,10 @@ if (login.status !== 200) {
 const token = login.body.accessToken;
 
 step(`Analyst account ${ANALYST.email}`);
-const analyst = await call('POST', '/auth/register', { body: ANALYST });
+const analyst = await call('POST', '/users', {
+  token,
+  body: { ...ANALYST, role: 'analyst' },
+});
 console.log(
   analyst.status === 201
     ? '  created'

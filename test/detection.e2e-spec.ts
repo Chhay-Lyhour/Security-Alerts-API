@@ -9,6 +9,9 @@ import { AppModule } from '../src/app.module.js';
 import type { AuditLog } from '../src/audit/entities/audit-log.entity.js';
 import { Lockout } from '../src/auth/entities/lockout.entity.js';
 import { LoginAttempt } from '../src/auth/entities/login-attempt.entity.js';
+import { LOGIN_ENGINE_SOURCE } from '../src/auth/login-alerts.service.js';
+import { NotificationSender } from '../src/notifications/channels/notification-sender.js';
+import { NotificationChannel } from '../src/notifications/entities/notification-channel.enum.js';
 import { UserRole } from '../src/users/entities/user-role.enum.js';
 import { UsersService } from '../src/users/users.service.js';
 
@@ -60,9 +63,14 @@ describe('Login detection insights (e2e)', () => {
       );
     }
 
-    const moduleRef = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
+    // A fake channel: notifications are queued and recorded, never sent.
+    const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
+      .overrideProvider(NotificationSender)
+      .useValue({
+        enabledChannels: () => [NotificationChannel.SLACK],
+        send: async () => undefined,
+      })
+      .compile();
     app = moduleRef.createNestApplication();
     app.useGlobalPipes(
       new ValidationPipe({
@@ -225,5 +233,67 @@ describe('Login detection insights (e2e)', () => {
       'admin:success',
       'analyst:denied',
     ]);
+  });
+
+  it('turns a high-risk login into an alert on the internal source, with a notification', async () => {
+    // 19 earlier failures for one email (from another IP), then a real 20th
+    // over HTTP: rule 1, brute force, scores HIGH and locks the email.
+    const target = `brute-${run}@detection.test`;
+    const attempts = db.getRepository(LoginAttempt);
+    await attempts.save(
+      Array.from({ length: 19 }, () =>
+        attempts.create(attempt({ email: target, ip: '198.18.77.9' })),
+      ),
+    );
+    await http()
+      .post('/auth/login')
+      .send({ email: target, password: 'wrong-password' })
+      .expect(429);
+
+    type Row = {
+      id: string;
+      type: string;
+      severity: string;
+      payload: Record<string, unknown>;
+      source: string;
+    };
+    let alert: Row | undefined;
+    for (let i = 0; i < 50 && !alert; i++) {
+      [alert] = (await db.query(
+        `SELECT a."id", a."type", a."severity", a."payload", s."name" AS "source"
+           FROM "alerts" a JOIN "sources" s ON s."id" = a."sourceId"
+          WHERE a."payload"->>'email' = $1`,
+        [target],
+      )) as Row[];
+      if (!alert) await new Promise((r) => setTimeout(r, 100));
+    }
+    expect(alert).toMatchObject({
+      type: 'brute_force',
+      severity: 'high',
+      source: LOGIN_ENGINE_SOURCE,
+      payload: { engine: 'login', action: 'block', locks: ['email'] },
+    });
+
+    let notifications: unknown[] = [];
+    for (let i = 0; i < 50 && !notifications.length; i++) {
+      notifications = await db.query(
+        `SELECT "id" FROM "notifications" WHERE "alertId" = $1`,
+        [alert!.id],
+      );
+      if (!notifications.length) await new Promise((r) => setTimeout(r, 100));
+    }
+    expect(notifications).toHaveLength(1);
+
+    // The internal source can't be used to send alerts: it has no usable key.
+    const [source] = (await db.query(
+      `SELECT "isActive" FROM "sources" WHERE "name" = $1`,
+      [LOGIN_ENGINE_SOURCE],
+    )) as {
+      isActive: boolean;
+    }[];
+    expect(source.isActive).toBe(false);
+
+    await attempts.delete({ email: target });
+    await db.getRepository(Lockout).delete({ target });
   });
 });

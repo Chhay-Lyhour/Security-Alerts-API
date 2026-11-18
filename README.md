@@ -98,7 +98,7 @@ To send real notifications, set `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` (ste
 
 ## Analyst console
 
-Open **`/dashboard/`** (for example http://localhost:3000/dashboard/) and sign in with a staff account, or create an analyst account there. The **Live** view shows the pipeline as it happens: events arriving (Detect), each IP's count towards a rule and the login engine's risk scores (Score), and the IPs and logins being refused (Protect). Click any IP for its whole story. See [docs/DASHBOARD.md](./docs/DASHBOARD.md).
+Open **`/dashboard/`** (for example http://localhost:3000/dashboard/) and sign in with a staff account. There is no public sign-up: admins create accounts in the **Users** tab. The **Live** view shows the pipeline as it happens: events arriving (Detect), each IP's count towards a rule and the login engine's risk scores (Score), and the IPs and logins being refused (Protect). Click any IP for its whole story. See [docs/DASHBOARD.md](./docs/DASHBOARD.md).
 
 ## Deploy
 
@@ -125,10 +125,11 @@ Run migrations again whenever you pull new changes.
 
 | Method | Route | Auth | Role | Purpose |
 |---|---|---|---|---|
-| POST | `/auth/register` | Public | | Create an analyst account |
 | POST | `/auth/login` | Public | | Get tokens; runs login detection |
 | POST | `/auth/refresh`, `/auth/logout` | Refresh token | | Rotate or end a session |
 | GET | `/auth/me` | JWT | any | Current user |
+| POST / GET | `/users` | JWT | admin | Create a staff account (no public sign-up) / list accounts |
+| PATCH | `/users/:id/role` | JWT | admin | Change a role, not your own (audited) |
 | POST | `/sources` | JWT | admin | Register an app (API key shown once) |
 | GET | `/sources` | JWT | admin, analyst | List apps (names, never keys) |
 | GET | `/rules`, `/rules/:id` | JWT | admin, analyst | Detection rules |

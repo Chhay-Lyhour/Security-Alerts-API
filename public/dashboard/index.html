@@ -16,18 +16,13 @@
     <div class="brand"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 2 4 7v8c0 7.5 5.1 13.6 12 15 6.9-1.4 12-7.5 12-15V7z"/></svg><span>Security Alerts</span></div>
     <h1>Analyst console</h1>
     <p class="muted">Watch attacks being detected, scored and blocked as they happen.</p>
-    <div class="seg" role="tablist" aria-label="Sign in or create an account">
-      <button type="button" id="mode-login" role="tab" aria-selected="true">Sign in</button>
-      <button type="button" id="mode-register" role="tab" aria-selected="false">Create analyst account</button>
-    </div>
     <form id="auth-form" novalidate>
       <label>Email<input id="auth-email" type="email" autocomplete="username" required></label>
       <label>Password<input id="auth-password" type="password" autocomplete="current-password" required minlength="12"></label>
-      <p id="auth-hint" class="muted small" hidden>At least 12 characters. New accounts are analysts: they can view everything and acknowledge alerts.</p>
       <button id="auth-submit" class="btn primary wide" type="submit">Sign in</button>
       <p id="auth-msg" class="msg" role="alert"></p>
     </form>
-    <p class="muted small">Every sign-in here is itself checked by the login detection engine.</p>
+    <p class="muted small">No account? Ask an admin: accounts are created by admins only. Every sign-in here is itself checked by the login detection engine.</p>
   </section>
 </main>
 
@@ -41,6 +36,7 @@
       <button type="button" data-tab="firewall">Firewall</button>
       <button type="button" data-tab="logins">Login engine</button>
       <button type="button" data-tab="rules">Rules</button>
+      <button type="button" data-tab="users" data-admin>Users</button>
       <button type="button" data-tab="audit" data-admin>Audit</button>
     </nav>
     <div class="who">
@@ -135,6 +131,24 @@
     <h3 class="h3">Login detection engine</h3>
     <p class="muted">Runs on every sign-in to this API. Fired rules are added into one risk score.</p>
     <div class="login-rules" id="login-rules"></div>
+  </section>
+
+  <!-- USERS -->
+  <section id="tab-users" class="tab" hidden>
+    <div class="bar"><h2>Users</h2><button type="button" class="btn ghost sm" data-refresh="users">Refresh</button></div>
+    <p class="muted">There is no public sign-up. Admins create every account and choose its role. Role changes apply on the user's next request, and both are recorded in the audit trail.</p>
+    <form class="card form-row" id="user-form">
+      <label>Email<input name="email" type="email" required maxlength="255" autocomplete="off"></label>
+      <label>Temporary password<input name="password" type="password" required minlength="12" maxlength="128" autocomplete="new-password" placeholder="12+ characters"></label>
+      <label>Role<select name="role"><option value="analyst">analyst</option><option value="admin">admin</option></select></label>
+      <button class="btn primary" type="submit">Create account</button>
+      <p class="msg" id="user-msg" role="alert"></p>
+    </form>
+    <div class="card explain">
+      <div><h4>Analyst</h4><p class="muted small">Sees alerts, the live pipeline, blocks, lockouts and rules. Can acknowledge and resolve alerts.</p></div>
+      <div><h4>Admin</h4><p class="muted small">Everything an analyst can do, plus: create users and change roles, block and unblock IPs, lift lockouts, change rules, register sources, delete alerts, read the audit trail.</p></div>
+    </div>
+    <div class="scroll" style="margin-top:16px"><table class="grid" id="users-table"></table></div>
   </section>
 
   <!-- AUDIT -->

@@ -4,7 +4,7 @@ import { UnrecoverableError } from 'bullmq';
 import nodemailer, { type Transporter } from 'nodemailer';
 import type { Alert } from '../../alerts/entities/alert.entity.js';
 import { NotificationChannel } from '../entities/notification-channel.enum.js';
-import { formatAlertMessage } from './alert-message.js';
+import { type AlertMessageOptions, formatAlertMessage } from './alert-message.js';
 
 const WEBHOOK_TIMEOUT_MS = 10_000;
 const TELEGRAM_API = 'https://api.telegram.org';
@@ -40,11 +40,11 @@ export class NotificationSender {
             case NotificationChannel.EMAIL:
                 return this.sendEmail(alert);
             case NotificationChannel.SLACK:
-                return this.postWebhook('SLACK_WEBHOOK_URL', { text: formatAlertMessage(alert).body });
+                return this.postWebhook('SLACK_WEBHOOK_URL', { text: formatAlertMessage(alert, this.messageOptions()).body });
             case NotificationChannel.DISCORD:
                 // Discord caps message content at 2000 characters.
                 return this.postWebhook('DISCORD_WEBHOOK_URL', {
-                    content: formatAlertMessage(alert).body.slice(0, 2000),
+                    content: formatAlertMessage(alert, this.messageOptions()).body.slice(0, 2000),
                 });
             case NotificationChannel.TELEGRAM:
                 return this.sendTelegram(alert);
@@ -64,7 +64,7 @@ export class NotificationSender {
             auth: settings.user ? { user: settings.user, pass: settings.pass } : undefined,
         });
 
-        const { subject, body } = formatAlertMessage(alert);
+        const { subject, body } = formatAlertMessage(alert, this.messageOptions());
         await this.mailer.sendMail({ from: settings.from, to: settings.to, subject, text: body });
     }
 
@@ -74,7 +74,7 @@ export class NotificationSender {
         if (!settings) throw new UnrecoverableError('Telegram channel is not configured');
 
         const icon = SEVERITY_ICONS[alert.severity] ?? '⚠️';
-        const text = `${icon} ${formatAlertMessage(alert).body}`.slice(0, TELEGRAM_MAX_LENGTH);
+        const text = `${icon} ${formatAlertMessage(alert, this.messageOptions()).body}`.slice(0, TELEGRAM_MAX_LENGTH);
         // The token is part of the URL, so it must never appear in errors or logs.
         await this.postJson(
             `${TELEGRAM_API}/bot${settings.token}/sendMessage`,
@@ -104,6 +104,14 @@ export class NotificationSender {
                 && response.status !== 408 && response.status !== 429;
             throw permanent ? new UnrecoverableError(message) : new Error(message);
         }
+    }
+
+    private messageOptions(): AlertMessageOptions {
+        return {
+            autoBlockMinutes: Number(this.value('FIREWALL_AUTO_BLOCK_MINUTES') ?? 60),
+            // Render sets RENDER_EXTERNAL_URL on every web service.
+            baseUrl: this.value('PUBLIC_URL') ?? this.value('RENDER_EXTERNAL_URL'),
+        };
     }
 
     private telegramSettings() {

@@ -65,6 +65,7 @@ describe('validateEnv', () => {
     [{ FIREWALL_AUTO_BLOCK_MINUTES: '1h' }, 'FIREWALL_AUTO_BLOCK_MINUTES'],
     [{ FIREWALL_ALLOWLIST: '10.0.0.0/8,office' }, 'FIREWALL_ALLOWLIST: "office"'],
     [{ DATABASE_RUN_MIGRATIONS: 'yes' }, 'DATABASE_RUN_MIGRATIONS'],
+    [{ PUBLIC_URL: 'security-alerts.example' }, 'PUBLIC_URL'],
   ])('rejects bad firewall or migration settings: %o', (env, message) => {
     expect(() => validateEnv({ JWT_SECRET: goodSecret, ...env })).toThrow(message);
   });

@@ -28,7 +28,6 @@ export class SourcesService {
     return apiKey.slice(0, LOOKUP_PREFIX_LENGTH);
   }
 
-
   async findActiveByApiKey(apiKey: string): Promise<Source | null> {
     if (!apiKey.startsWith(KEY_PREFIX)) return null;
 
@@ -66,6 +65,36 @@ export class SourcesService {
     );
     const { apiKeyHash: _omit, ...safe } = saved;
     return { ...safe, apiKey };
+  }
+
+  /**
+   * The source for alerts this API raises itself (the login detection
+   * engine). Inactive, with a key nobody ever sees, so no caller can send
+   * alerts as it.
+   */
+  async ensureInternal(name: string): Promise<Source> {
+    const existing = await this.sources.findOne({ where: { name } });
+    if (existing) return existing;
+    try {
+      const saved = await this.sources.save(
+        this.sources.create({
+          name,
+          apiKeyPrefix: null,
+          apiKeyHash: await bcrypt.hash(
+            SourcesService.generateApiKey(),
+            BCRYPT_ROUNDS,
+          ),
+          isActive: false,
+        }),
+      );
+      const { apiKeyHash: _omit, ...safe } = saved;
+      return safe as Source;
+    } catch (error) {
+      // Another request created it first (unique name).
+      const raced = await this.sources.findOne({ where: { name } });
+      if (raced) return raced;
+      throw error;
+    }
   }
 
   findAll(): Promise<Source[]> {

@@ -17,7 +17,6 @@ import { AuthService } from './auth.service.js';
 import { getRequestContext } from './detection/request-context.js';
 import { LoginDto } from './dto/login.dto.js';
 import { RefreshTokenDto } from './dto/refresh-token.dto.js';
-import { RegisterDto } from './dto/register.dto.js';
 
 const MINUTE_MS = 60_000;
 
@@ -26,18 +25,13 @@ const MINUTE_MS = 60_000;
  * Retry-After header. They are scoped to this controller rather than global:
  * a global limiter would answer 429 on hidden routes, revealing that they
  * exist. Per-account lockout comes later with login detection (rule 1).
+ *
+ * There is no sign-up route: admins create accounts with POST /users.
  */
 @Controller('auth')
 @UseGuards(ThrottlerGuard)
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
-
-  @Public()
-  @Throttle({ default: { limit: 3, ttl: MINUTE_MS } })
-  @Post('register')
-  register(@Body() dto: RegisterDto) {
-    return this.authService.register(dto);
-  }
 
   @Public()
   @Throttle({ default: { limit: 5, ttl: MINUTE_MS } })

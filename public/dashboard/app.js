@@ -149,17 +149,6 @@
   }
 
   // ------------------------------------------------------------------ auth screen
-  let registerMode = false;
-  function setMode(reg) {
-    registerMode = reg;
-    $('#mode-login').setAttribute('aria-selected', String(!reg));
-    $('#mode-register').setAttribute('aria-selected', String(reg));
-    $('#auth-submit').textContent = reg ? 'Create account' : 'Sign in';
-    $('#auth-hint').hidden = !reg;
-    $('#auth-password').autocomplete = reg ? 'new-password' : 'current-password';
-    $('#auth-msg').textContent = '';
-  }
-
   async function submitAuth(e) {
     e.preventDefault();
     const email = $('#auth-email').value.trim();
@@ -167,7 +156,6 @@
     const msg = $('#auth-msg');
     msg.className = 'msg';
     if (!email || !password) return (msg.textContent = 'Enter your email and password.');
-    if (registerMode && password.length < 12) return (msg.textContent = 'Use at least 12 characters.');
     const btn = $('#auth-submit');
     btn.disabled = true;
     const slow = setTimeout(() => {
@@ -175,10 +163,7 @@
       msg.textContent = 'Waking up the server. The first request after a quiet spell can take up to a minute…';
     }, 4000);
     try {
-      const body = registerMode
-        ? { email, password, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone }
-        : { email, password };
-      const auth = await api(registerMode ? '/auth/register' : '/auth/login', { method: 'POST', body });
+      const auth = await api('/auth/login', { method: 'POST', body: { email, password } });
       saveSession(auth);
       $('#auth-password').value = '';
       start();
@@ -191,9 +176,7 @@
             ? 'Access denied: this IP is blocked by the firewall.'
             : err.status === 401
               ? 'Wrong email or password.'
-              : err.status === 409
-                ? 'That email already has an account. Sign in instead.'
-                : err.message || 'Could not reach the server.';
+              : err.message || 'Could not reach the server.';
     } finally {
       clearTimeout(slow);
       btn.disabled = false;
@@ -247,7 +230,7 @@
   }
 
   function showTab(tab) {
-    if (!$(`#tab-${tab}`) || (tab === 'audit' && !isAdmin())) tab = 'live';
+    if (!$(`#tab-${tab}`) || (['audit', 'users'].includes(tab) && !isAdmin())) tab = 'live';
     S.tab = tab;
     history.replaceState(null, '', `#${tab}`);
     $$('.tabs button').forEach((b) => b.classList.toggle('on', b.dataset.tab === tab));
@@ -256,7 +239,7 @@
   }
 
   function loadTab(tab) {
-    const run = { live: loadLive, alerts: loadAlerts, firewall: loadFirewall, logins: loadLogins, rules: loadRules, audit: loadAudit }[tab];
+    const run = { live: loadLive, alerts: loadAlerts, firewall: loadFirewall, logins: loadLogins, rules: loadRules, users: loadUsers, audit: loadAudit }[tab];
     return run?.().catch(showLoadError);
   }
 
@@ -322,7 +305,8 @@
 
   function renderLive({ alerts, openHigh, openCritical, blocks, lockouts, attempts, sourceId }) {
     const list = alerts.data;
-    const raw = list.filter((a) => !isEscalation(a));
+    // Login-engine alerts are already on screen as scored sign-ins.
+    const raw = list.filter((a) => !isEscalation(a) && a.payload?.engine !== 'login');
     const fired = list.filter(isEscalation);
     const activeBlocks = blocks;
 
@@ -669,6 +653,41 @@
     markUpdated();
   }
 
+  // ------------------------------------------------------------------ USERS tab
+  async function loadUsers() {
+    const users = await api('/users');
+    $('#users-table').innerHTML = `<thead><tr><th>Email</th><th>Role</th><th>Created</th></tr></thead><tbody>${
+      users
+        .map((u) => {
+          const self = u.id === S.user.id;
+          const role = self
+            ? `<span class="pill plain">${esc(u.role)}</span> <span class="meta">(you)</span>`
+            : `<select data-user-role="${esc(u.id)}" aria-label="Role for ${esc(u.email)}">${['analyst', 'admin']
+                .map((r) => `<option ${r === u.role ? 'selected' : ''}>${r}</option>`)
+                .join('')}</select>`;
+          return `<tr><td><b>${esc(u.email)}</b></td><td>${role}</td><td class="nowrap">${esc(clock(u.createdAt))}</td></tr>`;
+        })
+        .join('') || `<tr><td colspan="3">${empty('No users.')}</td></tr>`
+    }</tbody>`;
+    markUpdated();
+  }
+
+  async function submitUser(e) {
+    e.preventDefault();
+    const f = Object.fromEntries(new FormData(e.target));
+    const msg = $('#user-msg');
+    try {
+      const user = await api('/users', { method: 'POST', body: { email: f.email.trim(), password: f.password, role: f.role } });
+      msg.className = 'msg ok';
+      msg.textContent = `Created ${user.email} as ${user.role}. Share the password privately.`;
+      e.target.reset();
+      loadUsers();
+    } catch (err) {
+      msg.className = 'msg';
+      msg.textContent = err.status === 409 ? 'That email already has an account.' : err.message;
+    }
+  }
+
   // ------------------------------------------------------------------ AUDIT tab
   async function loadAudit() {
     const f = Object.fromEntries(new FormData($('#audit-filters')));
@@ -726,6 +745,9 @@
 
   document.addEventListener('change', (e) => {
     const el = e.target;
+    if (el.dataset.userRole) {
+      return act(() => api(`/users/${el.dataset.userRole}/role`, { method: 'PATCH', body: { role: el.value } }), `Role changed to ${el.value}.`);
+    }
     if (el.dataset.rule) {
       return act(() => api(`/rules/${el.dataset.rule}`, { method: 'PATCH', body: { isEnabled: el.checked } }), `Rule turned ${el.checked ? 'on' : 'off'}.`).then(loadReference);
     }
@@ -741,8 +763,7 @@
   for (const id of ['alert-filters', 'attempt-filters', 'audit-filters']) $(`#${id}`).addEventListener('submit', (e) => (e.preventDefault(), e.target.dispatchEvent(new Event('change', { bubbles: true }))));
 
   $('#auth-form').addEventListener('submit', submitAuth);
-  $('#mode-login').addEventListener('click', () => setMode(false));
-  $('#mode-register').addEventListener('click', () => setMode(true));
+  $('#user-form').addEventListener('submit', submitUser);
   $('#logout').addEventListener('click', () => signOut());
   $('#block-form').addEventListener('submit', submitBlock);
   $('#drawer-close').addEventListener('click', closeDrawer);

@@ -26,9 +26,15 @@ curl -X POST localhost:3000/auth/login \
 curl localhost:3000/auth/me -H "Authorization: Bearer <accessToken>"
 ```
 
-## Creating admins
+## Creating accounts
 
-Anyone can register, but always as an analyst. If the first registered user became admin automatically, an attacker who found a fresh deployment first could take it over. Admins are created from the command line instead, which needs access to the server and its database.
+There is no public sign-up. Every account is created by an admin, who chooses its role:
+
+- `POST /users` with `{ "email", "password", "role" }` (role `analyst` by default), or the **Users** tab of the [dashboard](./DASHBOARD.md).
+- `PATCH /users/:id/role` changes a role. An admin can't change their own, so the last admin can't lock everyone out. The new role applies on the user's next request, because every request re-reads the user.
+- Both are recorded in the [audit trail](./AUDIT.md) as `created_user` and `changed_user_role`, with the email and role but never the password.
+
+The **first** admin can't come from the API (there's no admin yet to call it), so it's created from the command line, which needs access to the server and its database:
 
 ```
 > npm run seed:admin
@@ -39,7 +45,7 @@ Confirm password: ************
 ```
 
 - The password is typed at a hidden prompt, so it never ends up in a file or in shell history.
-- It goes through the same rules as `/auth/register`.
+- It goes through the same rules as `POST /users`.
 - If the email already belongs to an analyst, the script offers to promote them. Their password is not changed.
 - If the email is already an admin, nothing changes. The script never overwrites a password.
 - Pass the email up front with `npm run seed:admin -- --email admin@example.com`.
@@ -51,23 +57,10 @@ On Windows, run it from PowerShell or the VS Code terminal. In Git Bash (mintty)
 
 | Method | Route | Auth | Rate limit (per IP) | Purpose |
 |---|---|---|---|---|
-| POST | `/auth/register` | Public | 3 / min | Create an analyst account and get tokens |
 | POST | `/auth/login` | Public | 5 / min | Get tokens |
 | POST | `/auth/refresh` | Public (refresh token in body) | 10 / min | Swap a refresh token for a new pair |
 | POST | `/auth/logout` | Public (refresh token in body) | 10 / min | End the session |
 | GET | `/auth/me` | JWT | none | Show the logged-in user |
-
-### `POST /auth/register`
-
-```json
-{ "email": "analyst@example.com", "password": "at-least-12-chars", "timezone": "Asia/Phnom_Penh" }
-```
-
-- `password`: 12–128 characters.
-- `timezone`: optional IANA name, used later by the "unusual login time" rule.
-- Any extra field, including `role`, is rejected with 400.
-
-Responses: `201` with the [token response](#token-response), `409` if the email is already registered, `400` for invalid input.
 
 ### `POST /auth/login`
 
@@ -286,11 +279,11 @@ node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
 src/
 ├── auth/
 │   ├── auth.controller.ts          endpoints and rate limits
-│   ├── auth.service.ts             register, login, refresh, logout
+│   ├── auth.service.ts             login, refresh, logout
 │   ├── refresh-tokens.service.ts   issue, rotate, revoke, reuse detection
 │   ├── jwt.strategy.ts             verifies JWTs, reloads the user
 │   ├── entities/refresh-token.entity.ts
-│   └── dto/                        register, login, refresh-token
+│   └── dto/                        login, refresh-token
 ├── users/
 │   ├── users.service.ts            user lookup, creation, role changes
 │   ├── password.util.ts            Argon2id hash and verify

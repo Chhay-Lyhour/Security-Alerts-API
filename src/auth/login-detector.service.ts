@@ -20,6 +20,7 @@ import {
 import type { RequestContext } from './detection/request-context.js';
 import { LoginAttempt } from './entities/login-attempt.entity.js';
 import { LockoutService } from './lockout.service.js';
+import { LoginAlertsService } from './login-alerts.service.js';
 
 export interface LoginAssessment {
   signals: LoginSignal[];
@@ -74,6 +75,7 @@ export class LoginDetectorService {
     @InjectRepository(LoginAttempt) private readonly attempts: Repository<LoginAttempt>,
     private readonly lockouts: LockoutService,
     private readonly devices: DevicesService,
+    private readonly loginAlerts: LoginAlertsService,
   ) {}
 
   /** Throws 429 (and records a blocked attempt) while the email or IP is locked. */
@@ -155,12 +157,13 @@ export class LoginDetectorService {
   }
 
   /**
-   * Until the Alerts module exists, detections are stored on the
-   * LoginAttempt row and logged here. Later this is where each signal
-   * becomes an Alert and a notification job.
+   * Detections are stored on the LoginAttempt row and logged here. HIGH and
+   * CRITICAL ones also become an Alert and a notification (LoginAlertsService),
+   * without delaying the login response.
    */
   private report(attempt: LoginAttempt, assessment: LoginAssessment): void {
     if (!assessment.signals.length) return;
+    void this.loginAlerts.raise(attempt, assessment);
     const types = assessment.signals
       .map((s) => (s.related?.length ? `${s.type}(+${s.related.join(',')})` : s.type))
       .join(', ');
