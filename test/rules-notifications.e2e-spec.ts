@@ -114,8 +114,8 @@ describe('Rules and notifications (e2e)', () => {
   describe('/rules CRUD', () => {
     let ruleId: string;
 
-    it('is admin only', async () => {
-      await asAnalyst(http().get('/rules')).expect(403);
+    it('lets analysts read but only admins change', async () => {
+      await asAnalyst(http().get('/rules')).expect(200);
       await asAnalyst(http().post('/rules')).send({}).expect(403);
       // JwtAuthGuard hides routes from unauthenticated callers.
       await http().get('/rules').expect(404);

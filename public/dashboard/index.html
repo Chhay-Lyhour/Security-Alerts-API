@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Security Alerts · Analyst console</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 2 4 7v8c0 7.5 5.1 13.6 12 15 6.9-1.4 12-7.5 12-15V7z' fill='%231f4fe0'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="app.css">
+<script src="app.js" defer></script>
+</head>
+<body>
+
+<!-- Sign in -->
+<main id="auth" class="auth" hidden>
+  <section class="auth-card">
+    <div class="brand"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 2 4 7v8c0 7.5 5.1 13.6 12 15 6.9-1.4 12-7.5 12-15V7z"/></svg><span>Security Alerts</span></div>
+    <h1>Analyst console</h1>
+    <p class="muted">Watch attacks being detected, scored and blocked as they happen.</p>
+    <div class="seg" role="tablist" aria-label="Sign in or create an account">
+      <button type="button" id="mode-login" role="tab" aria-selected="true">Sign in</button>
+      <button type="button" id="mode-register" role="tab" aria-selected="false">Create analyst account</button>
+    </div>
+    <form id="auth-form" novalidate>
+      <label>Email<input id="auth-email" type="email" autocomplete="username" required></label>
+      <label>Password<input id="auth-password" type="password" autocomplete="current-password" required minlength="12"></label>
+      <p id="auth-hint" class="muted small" hidden>At least 12 characters. New accounts are analysts: they can view everything and acknowledge alerts.</p>
+      <button id="auth-submit" class="btn primary wide" type="submit">Sign in</button>
+      <p id="auth-msg" class="msg" role="alert"></p>
+    </form>
+    <p class="muted small">Every sign-in here is itself checked by the login detection engine.</p>
+  </section>
+</main>
+
+<!-- App -->
+<div id="app" hidden>
+  <header class="top">
+    <div class="brand"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 2 4 7v8c0 7.5 5.1 13.6 12 15 6.9-1.4 12-7.5 12-15V7z"/></svg><span>Security Alerts</span></div>
+    <nav class="tabs" aria-label="Sections">
+      <button type="button" data-tab="live" class="on">Live</button>
+      <button type="button" data-tab="alerts">Alerts</button>
+      <button type="button" data-tab="firewall">Firewall</button>
+      <button type="button" data-tab="logins">Login engine</button>
+      <button type="button" data-tab="rules">Rules</button>
+      <button type="button" data-tab="audit" data-admin>Audit</button>
+    </nav>
+    <div class="who">
+      <span class="pulse" id="pulse" title="Live"></span>
+      <span id="updated" class="muted small"></span>
+      <span id="me" class="me"></span>
+      <button type="button" id="logout" class="btn ghost sm">Sign out</button>
+    </div>
+  </header>
+
+  <!-- LIVE -->
+  <section id="tab-live" class="tab">
+    <div class="bar">
+      <div>
+        <h2>Detect <span class="arrow">→</span> Score <span class="arrow">→</span> Protect</h2>
+        <p class="muted">Updates every 4 seconds. Click any IP to see its whole story.</p>
+      </div>
+      <label class="inline">Source <select id="live-source"><option value="">All sources</option></select></label>
+    </div>
+
+    <div class="kpis" id="kpis"></div>
+
+    <div class="pipeline">
+      <article class="stage">
+        <header><span class="num">01</span><div><h3>Detect</h3><p>Events reported by connected apps, and logins the engine flagged</p></div></header>
+        <div class="feed" id="feed-detect"></div>
+      </article>
+      <article class="stage">
+        <header><span class="num">02</span><div><h3>Score</h3><p>Each IP's count towards a rule; when it reaches the threshold the rule fires</p></div></header>
+        <h4 class="sub">Rule progress, live</h4>
+        <div class="feed" id="feed-meters"></div>
+        <h4 class="sub">Rules fired and login risk scores</h4>
+        <div class="feed" id="feed-score"></div>
+      </article>
+      <article class="stage">
+        <header><span class="num">03</span><div><h3>Protect</h3><p>IPs the firewall refuses, and emails or IPs the login engine locked</p></div></header>
+        <div class="feed" id="feed-protect"></div>
+      </article>
+    </div>
+  </section>
+
+  <!-- ALERTS -->
+  <section id="tab-alerts" class="tab" hidden>
+    <div class="bar"><h2>Alerts</h2><button type="button" class="btn ghost sm" data-refresh="alerts">Refresh</button></div>
+    <form class="filters" id="alert-filters">
+      <label>Source<select name="sourceId"><option value="">All</option></select></label>
+      <label>Severity<select name="severity"><option value="">All</option><option>low</option><option>medium</option><option>high</option><option>critical</option></select></label>
+      <label>Status<select name="status"><option value="">All</option><option>open</option><option>acknowledged</option><option>resolved</option></select></label>
+      <label>Type<input name="type" placeholder="failed_login" pattern="[a-z][a-z0-9_]*"></label>
+      <label>IP<input name="ipAddress" placeholder="203.0.113.7"></label>
+    </form>
+    <div class="scroll"><table class="grid" id="alerts-table"></table></div>
+    <div class="pager" id="alerts-pager"></div>
+  </section>
+
+  <!-- FIREWALL -->
+  <section id="tab-firewall" class="tab" hidden>
+    <div class="bar"><h2>Firewall</h2><button type="button" class="btn ghost sm" data-refresh="firewall">Refresh</button></div>
+    <form class="card form-row" id="block-form" data-admin>
+      <label>IP or range<input name="ip" placeholder="203.0.113.7 or 203.0.113.0/24" required></label>
+      <label>Reason<input name="reason" placeholder="Seen scanning the login page" maxlength="200"></label>
+      <label>Minutes<input name="minutes" type="number" min="1" max="525600" placeholder="empty = until lifted"></label>
+      <button class="btn danger" type="submit">Block</button>
+      <p class="msg" id="block-msg" role="alert"></p>
+    </form>
+    <div class="scroll"><table class="grid" id="blocks-table"></table></div>
+  </section>
+
+  <!-- LOGIN ENGINE -->
+  <section id="tab-logins" class="tab" hidden>
+    <div class="bar"><h2>Login detection engine</h2><button type="button" class="btn ghost sm" data-refresh="logins">Refresh</button></div>
+    <div class="card explain" id="score-explain"></div>
+    <h3 class="h3">Active lockouts</h3>
+    <div class="scroll"><table class="grid" id="lockouts-table"></table></div>
+    <div class="bar"><h3 class="h3">Login attempts</h3>
+      <form class="filters tight" id="attempt-filters">
+        <label class="check"><input type="checkbox" name="flagged" checked> Flagged only</label>
+        <label>Risk<select name="riskLevel"><option value="">Any</option><option>low</option><option>medium</option><option>high</option><option>critical</option></select></label>
+        <label>IP<input name="ip" placeholder="IP"></label>
+      </form>
+    </div>
+    <div class="scroll"><table class="grid" id="attempts-table"></table></div>
+    <div class="pager" id="attempts-pager"></div>
+  </section>
+
+  <!-- RULES -->
+  <section id="tab-rules" class="tab" hidden>
+    <div class="bar"><h2>Rules</h2><button type="button" class="btn ghost sm" data-refresh="rules">Refresh</button></div>
+    <h3 class="h3">Alert rules for connected apps</h3>
+    <p class="muted">Counted per IP. A rule at high or critical also blocks the IP in the firewall.</p>
+    <div class="scroll"><table class="grid" id="rules-table"></table></div>
+    <h3 class="h3">Login detection engine</h3>
+    <p class="muted">Runs on every sign-in to this API. Fired rules are added into one risk score.</p>
+    <div class="login-rules" id="login-rules"></div>
+  </section>
+
+  <!-- AUDIT -->
+  <section id="tab-audit" class="tab" hidden>
+    <div class="bar"><h2>Audit trail</h2><button type="button" class="btn ghost sm" data-refresh="audit">Refresh</button></div>
+    <p class="muted">Every privileged action, including refused attempts. Rows can't be edited or deleted.</p>
+    <form class="filters" id="audit-filters">
+      <label>Outcome<select name="outcome"><option value="">All</option><option>success</option><option>denied</option><option>failed</option></select></label>
+      <label>Action<input name="action" placeholder="blocked_ip"></label>
+    </form>
+    <div class="scroll"><table class="grid" id="audit-table"></table></div>
+    <div class="pager" id="audit-pager"></div>
+  </section>
+</div>
+
+<!-- IP story / alert detail -->
+<aside id="drawer" class="drawer" hidden aria-modal="true" role="dialog" aria-labelledby="drawer-title">
+  <div class="drawer-panel">
+    <header><h2 id="drawer-title"></h2><button type="button" class="btn ghost sm" id="drawer-close">Close</button></header>
+    <div id="drawer-body"></div>
+  </div>
+</aside>
+<div id="toasts" class="toasts" aria-live="polite"></div>
+</body>
+</html>

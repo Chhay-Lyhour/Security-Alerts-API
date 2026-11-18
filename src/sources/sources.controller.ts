@@ -14,6 +14,8 @@ export class SourcesController {
     return this.sourcesService.create(dto);
   }
 
+  // Analysts may read names (never keys) to tell sources apart.
+  @Roles(UserRole.ADMIN, UserRole.ANALYST)
   @Get()
   findAll() {
     return this.sourcesService.findAll();

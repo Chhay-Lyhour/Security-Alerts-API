@@ -294,12 +294,12 @@ describe('Audit and firewall (e2e)', () => {
         .expect(400);
     });
 
-    it('lists active blocks for admins only', async () => {
+    it('lists active blocks to staff, but only admins block', async () => {
       const res = await asAdmin(http().get('/firewall/blocked-ips')).expect(
         200,
       );
       expect(res.body.map((b: BlockedIp) => b.id)).toContain(blockId);
-      await asAnalyst(http().get('/firewall/blocked-ips')).expect(403);
+      await asAnalyst(http().get('/firewall/blocked-ips')).expect(200);
       await asAnalyst(http().post('/firewall/blocked-ips'))
         .send({ ip: '198.51.100.99' })
         .expect(403);

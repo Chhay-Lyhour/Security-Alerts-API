@@ -103,6 +103,11 @@ export const PRIVILEGED_ROUTES: Record<string, PrivilegedRoute> = {
     targetType: 'device',
     targetFrom: 'param',
   },
+  'DELETE /detection/lockouts/:id': {
+    action: 'lifted_lockout',
+    targetType: 'lockout',
+    targetFrom: 'param',
+  },
   'POST /firewall/blocked-ips': {
     action: 'blocked_ip',
     targetType: 'blocked_ip',

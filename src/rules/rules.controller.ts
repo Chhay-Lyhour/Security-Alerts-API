@@ -15,11 +15,15 @@ export class RulesController {
     return this.rulesService.create(dto);
   }
 
+  // Analysts may read the rules (the dashboard shows progress towards each
+  // one); only admins change them.
+  @Roles(UserRole.ADMIN, UserRole.ANALYST)
   @Get()
   findAll() {
     return this.rulesService.findAll();
   }
 
+  @Roles(UserRole.ADMIN, UserRole.ANALYST)
   @Get(':id')
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.rulesService.findOne(id);

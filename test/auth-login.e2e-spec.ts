@@ -147,8 +147,9 @@ describe('Login flow (e2e)', () => {
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(403);
     await http()
-      .get('/sources')
+      .post('/sources')
       .set('Authorization', `Bearer ${accessToken}`)
+      .send({ name: 'not-allowed' })
       .expect(403);
   });
 

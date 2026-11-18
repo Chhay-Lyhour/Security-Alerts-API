@@ -96,6 +96,10 @@ Then walk through it:
 
 To send real notifications, set `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` (step-by-step: [docs/TELEGRAM.md](./docs/TELEGRAM.md), including how to find a group chat id), `SLACK_WEBHOOK_URL`, `DISCORD_WEBHOOK_URL` or the `SMTP_*` settings in `.env`. Without them the API logs that nothing was sent.
 
+## Analyst console
+
+Open **`/dashboard/`** (for example http://localhost:3000/dashboard/) and sign in with a staff account, or create an analyst account there. The **Live** view shows the pipeline as it happens: events arriving (Detect), each IP's count towards a rule and the login engine's risk scores (Score), and the IPs and logins being refused (Protect). Click any IP for its whole story. See [docs/DASHBOARD.md](./docs/DASHBOARD.md).
+
 ## Deploy
 
 `render.yaml` deploys the API, Postgres and Redis to Render's free plan in one click. See [docs/DEPLOY.md](./docs/DEPLOY.md).
@@ -125,8 +129,10 @@ Run migrations again whenever you pull new changes.
 | POST | `/auth/login` | Public | | Get tokens; runs login detection |
 | POST | `/auth/refresh`, `/auth/logout` | Refresh token | | Rotate or end a session |
 | GET | `/auth/me` | JWT | any | Current user |
-| POST / GET | `/sources` | JWT | admin | Register an app (API key shown once) / list |
-| POST / GET / PATCH | `/rules`, `/rules/:id` | JWT | admin | Detection rules |
+| POST | `/sources` | JWT | admin | Register an app (API key shown once) |
+| GET | `/sources` | JWT | admin, analyst | List apps (names, never keys) |
+| GET | `/rules`, `/rules/:id` | JWT | admin, analyst | Detection rules |
+| POST / PATCH | `/rules`, `/rules/:id` | JWT | admin | Create or change a rule |
 | POST | `/alerts` | API key | | Ingest an event |
 | GET | `/alerts`, `/alerts/:id` | JWT | admin, analyst | Filter, paginate, detail |
 | PATCH | `/alerts/:id/status` | JWT | admin, analyst | Acknowledge or resolve (audited) |
@@ -135,8 +141,13 @@ Run migrations again whenever you pull new changes.
 | PATCH / DELETE | `/devices/:id/trust`, `/devices/:id` | JWT | any | Trust or forget a device (audited) |
 | GET | `/audit` | JWT | admin | Audit trail, filtered and paginated |
 | POST | `/firewall/check` | API key | | Is this IP blocked? (for integrated apps) |
-| POST / GET | `/firewall/blocked-ips` | JWT | admin | Block an IP or range / list active blocks |
+| GET | `/firewall/blocked-ips` | JWT | admin, analyst | Active blocks |
+| POST | `/firewall/blocked-ips` | JWT | admin | Block an IP or range |
 | DELETE | `/firewall/blocked-ips/:id` | JWT | admin | Lift a block |
+| GET | `/detection/login-attempts` | JWT | admin, analyst | Login attempts with the rules that fired, score and level |
+| GET | `/detection/lockouts`, `/detection/config` | JWT | admin, analyst | Active lockouts; the rule thresholds and score weights |
+| DELETE | `/detection/lockouts/:id` | JWT | admin | Lift a login lockout (audited) |
+| GET | `/dashboard/` | Public page | | Analyst console; every call it makes needs a staff login |
 | GET | `/health` | Public | | Postgres and Redis status |
 
 ## Tests
