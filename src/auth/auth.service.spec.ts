@@ -1,4 +1,4 @@
-import { ConflictException, HttpException, UnauthorizedException } from '@nestjs/common';
+import { HttpException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { UserRole } from '../users/entities/user-role.enum.js';
@@ -71,39 +71,6 @@ describe('AuthService', () => {
       loginDetector as unknown as LoginDetectorService,
       new ConfigService({ JWT_ACCESS_EXPIRES_IN_SECONDS: '900' }),
     );
-  });
-
-  describe('register', () => {
-    it('creates an analyst and returns both tokens without the password hash', async () => {
-      usersService.findByEmail.mockResolvedValue(null);
-      usersService.create.mockResolvedValue(await storedUser('x'));
-
-      const result = await service.register({
-        email: 'analyst@example.com',
-        password: 'long-enough-password',
-      });
-
-      expect(usersService.create).toHaveBeenCalledWith(
-        expect.not.objectContaining({ role: expect.anything() }),
-      );
-      expect(result.user).not.toHaveProperty('passwordHash');
-      expect(result).toMatchObject({
-        tokenType: 'Bearer',
-        expiresIn: 900,
-        refreshToken: 'rt_new',
-      });
-      expect(jwtService.verify(result.accessToken)).toMatchObject({
-        sub: 'user-1',
-        role: UserRole.ANALYST,
-      });
-    });
-
-    it('rejects a duplicate email with 409', async () => {
-      usersService.findByEmail.mockResolvedValue(await storedUser('x'));
-      await expect(
-        service.register({ email: 'analyst@example.com', password: 'long-enough-password' }),
-      ).rejects.toThrow(ConflictException);
-    });
   });
 
   describe('login', () => {

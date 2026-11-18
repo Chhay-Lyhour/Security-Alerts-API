@@ -1,5 +1,4 @@
 import {
-  ConflictException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -11,7 +10,6 @@ import { hashPassword, verifyPassword } from '../users/password.util.js';
 import { UsersService } from '../users/users.service.js';
 import type { RequestContext } from './detection/request-context.js';
 import type { LoginDto } from './dto/login.dto.js';
-import type { RegisterDto } from './dto/register.dto.js';
 import { LoginDetectorService } from './login-detector.service.js';
 import { RefreshTokensService } from './refresh-tokens.service.js';
 
@@ -43,18 +41,6 @@ export class AuthService {
     this.accessTtlSeconds = Number(
       config.get('JWT_ACCESS_EXPIRES_IN_SECONDS', 900),
     );
-  }
-
-  async register(dto: RegisterDto): Promise<AuthResponse> {
-    if (await this.usersService.findByEmail(dto.email)) {
-      throw new ConflictException('Email already registered');
-    }
-    const user = await this.usersService.create({
-      email: dto.email,
-      password: dto.password,
-      timezone: dto.timezone,
-    });
-    return this.buildResponse(user, await this.refreshTokens.issue(user.id));
   }
 
   async login(dto: LoginDto, ctx: RequestContext): Promise<AuthResponse> {

@@ -31,9 +31,13 @@ export const validateEnv = (env: RawEnv): RawEnv => {
   if (!jwtSecret) {
     errors.push('JWT_SECRET is required');
   } else if (PLACEHOLDER_SECRETS.has(jwtSecret)) {
-    errors.push('JWT_SECRET is still the example placeholder; generate a real one');
+    errors.push(
+      'JWT_SECRET is still the example placeholder; generate a real one',
+    );
   } else if (jwtSecret.length < MIN_JWT_SECRET_LENGTH) {
-    errors.push(`JWT_SECRET must be at least ${MIN_JWT_SECRET_LENGTH} characters`);
+    errors.push(
+      `JWT_SECRET must be at least ${MIN_JWT_SECRET_LENGTH} characters`,
+    );
   }
 
   checkPositiveInt(env, 'JWT_ACCESS_EXPIRES_IN_SECONDS', errors);
@@ -44,7 +48,9 @@ export const validateEnv = (env: RawEnv): RawEnv => {
   // sitting in .env doing nothing.
   for (const key of ['ADMIN_EMAIL', 'ADMIN_PASSWORD']) {
     if (text(env, key) !== undefined) {
-      errors.push(`${key} is no longer used; remove it and run "npm run seed:admin" instead`);
+      errors.push(
+        `${key} is no longer used; remove it and run "npm run seed:admin" instead`,
+      );
     }
   }
 
@@ -58,43 +64,73 @@ export const validateEnv = (env: RawEnv): RawEnv => {
   const telegramToken = text(env, 'TELEGRAM_BOT_TOKEN');
   const telegramChat = text(env, 'TELEGRAM_CHAT_ID');
   if ((telegramToken === undefined) !== (telegramChat === undefined)) {
-    errors.push('TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID must be set together to enable Telegram notifications');
+    errors.push(
+      'TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID must be set together to enable Telegram notifications',
+    );
   }
   if (telegramToken !== undefined && !/^\d+:[\w-]+$/.test(telegramToken)) {
-    errors.push('TELEGRAM_BOT_TOKEN must look like 123456789:ABCdef... (from @BotFather)');
+    errors.push(
+      'TELEGRAM_BOT_TOKEN must look like 123456789:ABCdef... (from @BotFather)',
+    );
   }
   if (telegramChat !== undefined && !/^(-?\d+|@\w{5,})$/.test(telegramChat)) {
-    errors.push('TELEGRAM_CHAT_ID must be a numeric chat id (groups start with -) or a @channelname');
+    errors.push(
+      'TELEGRAM_CHAT_ID must be a numeric chat id (groups start with -) or a @channelname',
+    );
   }
   checkPositiveInt(env, 'SMTP_PORT', errors);
-  if ((text(env, 'SMTP_HOST') === undefined) !== (text(env, 'ALERT_EMAIL_TO') === undefined)) {
-    errors.push('SMTP_HOST and ALERT_EMAIL_TO must be set together to enable email notifications');
+  if (
+    (text(env, 'SMTP_HOST') === undefined) !==
+    (text(env, 'ALERT_EMAIL_TO') === undefined)
+  ) {
+    errors.push(
+      'SMTP_HOST and ALERT_EMAIL_TO must be set together to enable email notifications',
+    );
   }
 
   const trustProxy = text(env, 'TRUST_PROXY');
   if (trustProxy !== undefined && !/^\d+$/.test(trustProxy)) {
-    errors.push('TRUST_PROXY must be the number of proxy hops in front of the app (e.g. 1)');
+    errors.push(
+      'TRUST_PROXY must be the number of proxy hops in front of the app (e.g. 1)',
+    );
   }
 
   const autoBlock = text(env, 'FIREWALL_AUTO_BLOCK_MINUTES');
   if (autoBlock !== undefined && !/^\d+$/.test(autoBlock)) {
-    errors.push('FIREWALL_AUTO_BLOCK_MINUTES must be a whole number of minutes (0 turns auto-blocking off)');
+    errors.push(
+      'FIREWALL_AUTO_BLOCK_MINUTES must be a whole number of minutes (0 turns auto-blocking off)',
+    );
   }
-  for (const entry of (text(env, 'FIREWALL_ALLOWLIST') ?? '').split(',').map((e) => e.trim()).filter(Boolean)) {
+  for (const entry of (text(env, 'FIREWALL_ALLOWLIST') ?? '')
+    .split(',')
+    .map((e) => e.trim())
+    .filter(Boolean)) {
     try {
       parseNetwork(entry, { allowWide: true });
     } catch {
-      errors.push(`FIREWALL_ALLOWLIST: "${entry}" is not a valid IP address or CIDR range`);
+      errors.push(
+        `FIREWALL_ALLOWLIST: "${entry}" is not a valid IP address or CIDR range`,
+      );
     }
   }
 
+  const publicUrl = text(env, 'PUBLIC_URL');
+  if (publicUrl !== undefined && !/^https?:\/\/\S+$/.test(publicUrl)) {
+    errors.push('PUBLIC_URL must be an http:// or https:// URL');
+  }
+
   const runMigrations = text(env, 'DATABASE_RUN_MIGRATIONS');
-  if (runMigrations !== undefined && !['true', 'false'].includes(runMigrations)) {
+  if (
+    runMigrations !== undefined &&
+    !['true', 'false'].includes(runMigrations)
+  ) {
     errors.push('DATABASE_RUN_MIGRATIONS must be true or false');
   }
 
   if (errors.length > 0) {
-    throw new Error(`Invalid environment configuration:\n- ${errors.join('\n- ')}`);
+    throw new Error(
+      `Invalid environment configuration:\n- ${errors.join('\n- ')}`,
+    );
   }
   return env;
 };

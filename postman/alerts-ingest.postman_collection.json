@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "19e4d125-0ec8-47c4-a3c6-3192453b7730",
     "name": "Security Alerts API - Alerts & Ingest",
-    "description": "Role 2: sources, alert ingest, filters, status changes.\n\nRun the folders in order (or use Run collection). Set adminEmail/adminPassword to the admin you created with `npm run seed:admin`.\n\nNote: /auth/login allows 5 requests per minute and /auth/register 3 per minute.",
+    "description": "Role 2: sources, alert ingest, filters, status changes.\n\nRun the folders in order (or use Run collection). Set adminEmail/adminPassword to the admin you created with `npm run seed:admin`.\n\nNote: /auth/login allows 5 requests per minute.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "event": [
@@ -21,7 +21,7 @@
   "item": [
     {
       "name": "1. Auth",
-      "description": "Log in as the admin (made with `npm run seed:admin`) and register an analyst. Tokens are saved into collection variables.",
+      "description": "Log in as the admin (made with `npm run seed:admin`) and create an analyst (admins create every account). Tokens are saved into collection variables.",
       "item": [
         {
           "name": "Login as admin",
@@ -68,29 +68,32 @@
           ]
         },
         {
-          "name": "Register analyst",
+          "name": "Create analyst (admin)",
           "request": {
             "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/auth/register",
+              "raw": "{{baseUrl}}/users",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "auth",
-                "register"
+                "users"
               ]
             },
-            "description": "Creates an analyst account. Returns 409 if it already exists; then just run \"Login as analyst\".",
+            "description": "Creates an analyst account as the admin (there is no public sign-up). Returns 409 if it already exists. Then run \"Login as analyst\".",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"{{analystEmail}}\",\n  \"password\": \"{{analystPassword}}\"\n}",
+              "raw": "{\n  \"email\": \"{{analystEmail}}\",\n  \"password\": \"{{analystPassword}}\",\n  \"role\": \"analyst\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -104,8 +107,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('201 created, or 409 if the analyst already exists', () => pm.expect(pm.response.code).to.be.oneOf([201, 409]));",
-                  "if (pm.response.code === 201) pm.collectionVariables.set('analystToken', pm.response.json().accessToken);"
+                  "pm.test('201 created, or 409 if the analyst already exists', () => pm.expect(pm.response.code).to.be.oneOf([201, 409]));"
                 ]
               }
             }

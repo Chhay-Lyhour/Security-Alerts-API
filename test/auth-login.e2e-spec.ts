@@ -1,13 +1,17 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { Test } from '@nestjs/testing';
 import { randomUUID } from 'node:crypto';
 import request from 'supertest';
 import { App } from 'supertest/types.js';
 import { DataSource } from 'typeorm';
 import { AppModule } from '../src/app.module.js';
+import { NotificationSender } from '../src/notifications/channels/notification-sender.js';
+import { UserRole } from '../src/users/entities/user-role.enum.js';
+import { UsersService } from '../src/users/users.service.js';
 
 /**
- * The login flow end to end: register, log in, login detection recording
+ * The login flow end to end: an admin creates the account, log in, login detection recording
  * the attempt and the device, refresh-token rotation and logout.
  *
  *   DATABASE_NAME=security_alerts_test npm run test:e2e
@@ -28,6 +32,8 @@ describe('Login flow (e2e)', () => {
   let userId: string;
   let accessToken: string;
   let refreshToken: string;
+  let adminToken: string;
+  let adminId: string;
 
   const http = () => request(app.getHttpServer());
   const attempts = () =>
@@ -45,9 +51,13 @@ describe('Login flow (e2e)', () => {
         `Refusing to run e2e tests against "${dbName}": set DATABASE_NAME to a database ending in _test`,
       );
     }
+    // Never send real notifications from tests, whatever .env says.
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideProvider(NotificationSender)
+      .useValue({ enabledChannels: () => [], send: async () => undefined })
+      .compile();
     app = moduleRef.createNestApplication();
     app.useGlobalPipes(
       new ValidationPipe({
@@ -58,22 +68,45 @@ describe('Login flow (e2e)', () => {
     );
     await app.init();
     db = app.get(DataSource);
+
+    const admin = await app.get(UsersService).create({
+      email: `admin-${randomUUID().slice(0, 8)}@login.test`,
+      password: 'long-enough-password',
+      role: UserRole.ADMIN,
+    });
+    adminId = admin.id;
+    adminToken = await app
+      .get(JwtService)
+      .signAsync({ sub: admin.id, email: admin.email, role: admin.role });
   });
 
   afterAll(async () => {
     await app?.close();
   });
 
-  it('registers a user as an analyst and never returns the password hash', async () => {
+  it('has no public sign-up: only an admin creates accounts', async () => {
+    await http().post('/auth/register').send({ email, password }).expect(404);
+    await http().post('/users').send({ email, password }).expect(404);
+
     const res = await http()
-      .post('/auth/register')
+      .post('/users')
+      .set('Authorization', `Bearer ${adminToken}`)
       .send({ email, password })
       .expect(201);
-    expect(res.body.user).toMatchObject({ email, role: 'analyst' });
+    expect(res.body).toMatchObject({ email, role: 'analyst' });
     expect(JSON.stringify(res.body)).not.toMatch(/passwordHash|argon2/);
-    userId = res.body.user.id;
+    userId = res.body.id;
 
-    await http().post('/auth/register').send({ email, password }).expect(409);
+    await http()
+      .post('/users')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ email, password })
+      .expect(409);
+    await http()
+      .post('/users')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ email: `x-${email}`, password, role: 'owner' })
+      .expect(400);
   });
 
   it('logs in, records a successful attempt and remembers the device as untrusted', async () => {
@@ -141,6 +174,61 @@ describe('Login flow (e2e)', () => {
       .expect(401);
   });
 
+  it('lets an admin list users and change roles, but not their own', async () => {
+    const list = await http()
+      .get('/users')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+    expect(list.body.map((u: { id: string }) => u.id)).toContain(userId);
+    expect(JSON.stringify(list.body)).not.toMatch(/passwordHash/);
+
+    await http()
+      .patch(`/users/${adminId}/role`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ role: 'analyst' })
+      .expect(400);
+    await http()
+      .patch(`/users/${randomUUID()}/role`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ role: 'admin' })
+      .expect(404);
+
+    // Promote, check it applies at once (the role is re-read per request), demote.
+    await http()
+      .patch(`/users/${userId}/role`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ role: 'admin' })
+      .expect(200);
+    await http()
+      .get('/users')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .expect(200);
+    await http()
+      .patch(`/users/${userId}/role`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ role: 'analyst' })
+      .expect(200);
+
+    let rows: { action: string; metadata: Record<string, unknown> }[] = [];
+    for (let i = 0; i < 50 && rows.length < 3; i++) {
+      rows = (await db.query(
+        `SELECT "action", "metadata" FROM "audit_logs" WHERE "targetId" = $1 AND "outcome" = 'success' ORDER BY "createdAt"`,
+        [userId],
+      )) as typeof rows;
+      if (rows.length < 3) await new Promise((r) => setTimeout(r, 100));
+    }
+    expect(rows).toEqual(
+      [
+        { action: 'created_user', metadata: { email, role: undefined } },
+        { action: 'changed_user_role', metadata: { role: 'admin' } },
+        { action: 'changed_user_role', metadata: { role: 'analyst' } },
+      ].map((r) => ({
+        ...r,
+        metadata: JSON.parse(JSON.stringify(r.metadata)),
+      })),
+    );
+  });
+
   it('keeps analysts out of admin routes', async () => {
     await http()
       .get('/audit')
@@ -150,6 +238,11 @@ describe('Login flow (e2e)', () => {
       .post('/sources')
       .set('Authorization', `Bearer ${accessToken}`)
       .send({ name: 'not-allowed' })
+      .expect(403);
+    await http()
+      .post('/users')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({ email: `y-${email}`, password })
       .expect(403);
   });
 

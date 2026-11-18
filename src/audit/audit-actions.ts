@@ -103,6 +103,18 @@ export const PRIVILEGED_ROUTES: Record<string, PrivilegedRoute> = {
     targetType: 'device',
     targetFrom: 'param',
   },
+  'POST /users': {
+    action: 'created_user',
+    targetType: 'user',
+    targetFrom: 'response',
+    keep: ['email', 'role'],
+  },
+  'PATCH /users/:id/role': {
+    action: 'changed_user_role',
+    targetType: 'user',
+    targetFrom: 'param',
+    keep: ['role'],
+  },
   'DELETE /detection/lockouts/:id': {
     action: 'lifted_lockout',
     targetType: 'lockout',

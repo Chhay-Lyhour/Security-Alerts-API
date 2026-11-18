@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity.js';
@@ -45,6 +45,19 @@ export class UsersService {
     const saved = await this.users.save(user);
     const { passwordHash: _omit, ...safe } = saved;
     return safe as User;
+  }
+
+  /** Like create(), but answers 409 when the email is already taken. */
+  async createUnique(input: CreateUserInput): Promise<User> {
+    if (await this.findByEmail(input.email)) {
+      throw new ConflictException('Email already registered');
+    }
+    return this.create(input);
+  }
+
+  /** Every staff account, newest first. Never includes password hashes. */
+  findAll(): Promise<User[]> {
+    return this.users.find({ order: { createdAt: 'DESC' } });
   }
 
   async setRole(userId: string, role: UserRole): Promise<void> {

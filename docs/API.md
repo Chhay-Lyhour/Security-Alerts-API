@@ -30,7 +30,7 @@ The API accepts two kinds of credential.
 
 ### 1. JWT bearer token (people)
 
-Used by admins and analysts. Get one from `POST /auth/register` or `POST /auth/login`, then send it on every request:
+Used by admins and analysts. Get one from `POST /auth/login`, then send it on every request:
 
 ```
 Authorization: Bearer <accessToken>
@@ -38,7 +38,7 @@ Authorization: Bearer <accessToken>
 
 - The access token lives for `JWT_ACCESS_EXPIRES_IN_SECONDS` (default 900 s = 15 min). The response's `expiresIn` field gives the exact value.
 - When it expires, call `POST /auth/refresh` with the refresh token to get a new pair. Refresh tokens last `REFRESH_TOKEN_TTL_DAYS` (default 7 days) and can be used **once**. Reusing an old refresh token is treated as theft and ends all of that user's sessions.
-- The token carries the user's `role`: `admin` or `analyst`. New accounts from `/auth/register` are always `analyst`. Create the first admin with `npm run seed:admin`.
+- The token carries the user's `role`: `admin` or `analyst`. There is no public sign-up: admins create accounts with `POST /users`. Create the first admin with `npm run seed:admin`.
 
 ### 2. API key (integrated systems)
 
@@ -131,7 +131,6 @@ Only the `/auth` routes are rate-limited, per client IP and per route. Going ove
 
 | Route | Limit |
 |---|---|
-| `POST /auth/register` | 3 per minute |
 | `POST /auth/login` | 5 per minute |
 | `POST /auth/refresh` | 10 per minute |
 | `POST /auth/logout` | 10 per minute |
@@ -154,7 +153,9 @@ Separately, login detection can lock an email or IP after repeated failures (`42
 |---|---|---|---|
 | GET | [`/`](#get-) | Public | Hello world |
 | GET | [`/health`](#get-health) | Public | Postgres and Redis status |
-| POST | [`/auth/register`](#post-authregister) | Public | Create an analyst account |
+| POST | [`/users`](#post-users) | JWT admin | Create a staff account |
+| GET | `/users` | JWT admin | List staff accounts |
+| PATCH | `/users/:id/role` | JWT admin | Change a role (not your own) |
 | POST | [`/auth/login`](#post-authlogin) | Public | Log in |
 | POST | [`/auth/refresh`](#post-authrefresh) | Public (refresh token) | Swap a refresh token for a new pair |
 | POST | [`/auth/logout`](#post-authlogout) | Public (refresh token) | End the session |
@@ -215,7 +216,7 @@ All `/auth` routes are rate-limited (see [Rate limits](#rate-limits)).
 
 ### Auth response
 
-`register`, `login` and `refresh` all return this:
+`login` and `refresh` both return this:
 
 ```json
 {
@@ -241,11 +242,11 @@ All `/auth` routes are rate-limited (see [Rate limits](#rate-limits)).
 | `refreshToken` | string | Opaque, single-use. Store it securely |
 | `user` | object | `id`, `email`, `role`, `timezone` (nullable), `createdAt` |
 
-### `POST /auth/register`
+### `POST /users`
 
-**Auth:** Public · **Rate limit:** 3/min
+**Auth:** JWT, admin
 
-Creates an account with the `analyst` role and logs it in.
+Creates a staff account. There is no public sign-up. Audited as `created_user`.
 
 **Body**
 
@@ -253,17 +254,20 @@ Creates an account with the `analyst` role and logs it in.
 |---|---|---|---|
 | `email` | string | yes | Valid email, max 255 |
 | `password` | string | yes | 12–128 characters |
+| `role` | string | no | `analyst` (default) or `admin` |
 | `timezone` | string | no | IANA time zone, e.g. `Asia/Phnom_Penh` |
 
 ```bash
-curl -X POST http://localhost:3000/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"email":"analyst@example.com","password":"a-long-passphrase","timezone":"Asia/Phnom_Penh"}'
+curl -X POST http://localhost:3000/users \
+  -H "Authorization: Bearer <adminToken>" -H "Content-Type: application/json" \
+  -d '{"email":"analyst@example.com","password":"a-long-passphrase","role":"analyst"}'
 ```
 
-**201 Created:** [Auth response](#auth-response)
+**201 Created:** `{ id, email, role, timezone, createdAt }` (never the password hash)
 
-**Errors:** `400` validation · `409` `Email already registered` · `429` rate limit
+**Errors:** `400` validation · `403` not an admin · `409` `Email already registered`
+
+`PATCH /users/:id/role` with `{ "role": "admin" }` changes a role: `400` for your own account, `404` for an unknown id. Audited as `changed_user_role`.
 
 ### `POST /auth/login`
 

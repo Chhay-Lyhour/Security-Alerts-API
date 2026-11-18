@@ -1,15 +1,42 @@
 # Telegram notifications
 
-When the rule engine escalates an alert, the API can send it to a Telegram group or channel through a bot. It runs alongside the email, Slack and Discord channels: every channel whose settings are present gets its own notification job.
+The API can send alerts to a Telegram group or channel through a bot. It runs alongside the email, Slack and Discord channels: every channel whose settings are present gets its own notification job.
+
+## What sends a notification
+
+Not every event. Only the moments someone should look at:
+
+| Trigger | Example message heading |
+|---|---|
+| An **alert rule fires** for a connected app (5 `failed_login` from one IP in 60 s) | `🟠 [HIGH] Rule "Lotus: 5 failed logins in 60s": …` |
+| The **login engine** scores a sign-in to this API HIGH or CRITICAL | `🟠 [HIGH] Login engine: Brute force: 20 for this email …` |
+
+Single events and LOW/MEDIUM logins are stored and shown on the dashboard, but don't notify.
 
 ```
-🟠 [HIGH] failed_login threshold reached
+Event → saved → rule or login engine decides it matters
+      → one Notification row + BullMQ job per channel (Redis)
+      → worker sends it; on failure retries after 5 s, then 10 s
+      → status sent, or failed with the provider's error after 3 tries
+```
+
+The API answers the caller before any of this runs, so a slow provider never slows down ingest or login.
+
+A message says what was detected, how it was scored and what the system did:
+
+```
+🟠 [HIGH] Rule "Lotus: 5 failed logins in 60s": 5 failed_login alerts in 60s
+Source: lotus-demo-bank
 Type: failed_login
-Severity: high
 IP: 198.51.100.9
+Rule: Lotus: 5 failed logins in 60s (5 of 5 in 60s)
+Response: IP blocked by the firewall for 60 min
 Alert ID: 2392753f-…
 Created: 2026-11-12T01:52:10.000Z
+Dashboard: https://security-alerts-api.onrender.com/dashboard/
 ```
+
+The dashboard link uses `PUBLIC_URL`, or Render's `RENDER_EXTERNAL_URL` automatically.
 
 The icon shows the severity: 🔵 low, 🟡 medium, 🟠 high, 🔴 critical.
 
