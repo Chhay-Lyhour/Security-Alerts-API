@@ -115,6 +115,11 @@ export const PRIVILEGED_ROUTES: Record<string, PrivilegedRoute> = {
     targetFrom: 'param',
     keep: ['role'],
   },
+  'DELETE /users/:id': {
+    action: 'deleted_user',
+    targetType: 'user',
+    targetFrom: 'param',
+  },
   'DELETE /detection/lockouts/:id': {
     action: 'lifted_lockout',
     targetType: 'lockout',

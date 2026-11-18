@@ -229,6 +229,53 @@ describe('Login flow (e2e)', () => {
     );
   });
 
+  it('lets an admin delete a user, who is signed out at once', async () => {
+    const victim = await app.get(UsersService).create({
+      email: `delete-me-${randomUUID().slice(0, 8)}@login.test`,
+      password: 'long-enough-password',
+    });
+    const victimToken = await app
+      .get(JwtService)
+      .signAsync({ sub: victim.id, email: victim.email, role: victim.role });
+    await http()
+      .get('/auth/me')
+      .set('Authorization', `Bearer ${victimToken}`)
+      .expect(200);
+
+    await http()
+      .delete(`/users/${victim.id}`)
+      .set('Authorization', `Bearer ${accessToken}`)
+      .expect(403);
+    await http()
+      .delete(`/users/${adminId}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(400);
+    await http()
+      .delete(`/users/${victim.id}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(204);
+    await http()
+      .delete(`/users/${victim.id}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(404);
+
+    // The token hasn't expired, but the account is gone.
+    await http()
+      .get('/auth/me')
+      .set('Authorization', `Bearer ${victimToken}`)
+      .expect(401);
+
+    let row: { outcome: string } | undefined;
+    for (let i = 0; i < 50 && !row; i++) {
+      [row] = (await db.query(
+        `SELECT "outcome" FROM "audit_logs" WHERE "action" = 'deleted_user' AND "targetId" = $1 AND "outcome" = 'success'`,
+        [victim.id],
+      )) as { outcome: string }[];
+      if (!row) await new Promise((r) => setTimeout(r, 100));
+    }
+    expect(row).toBeDefined();
+  });
+
   it('keeps analysts out of admin routes', async () => {
     await http()
       .get('/audit')

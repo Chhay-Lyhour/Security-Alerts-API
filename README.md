@@ -130,6 +130,7 @@ Run migrations again whenever you pull new changes.
 | GET | `/auth/me` | JWT | any | Current user |
 | POST / GET | `/users` | JWT | admin | Create a staff account (no public sign-up) / list accounts |
 | PATCH | `/users/:id/role` | JWT | admin | Change a role, not your own (audited) |
+| DELETE | `/users/:id` | JWT | admin | Delete an account, not your own; signs it out everywhere (audited) |
 | POST | `/sources` | JWT | admin | Register an app (API key shown once) |
 | GET | `/sources` | JWT | admin, analyst | List apps (names, never keys) |
 | GET | `/rules`, `/rules/:id` | JWT | admin, analyst | Detection rules |

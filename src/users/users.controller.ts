@@ -2,7 +2,10 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   NotFoundException,
   Param,
   ParseUUIDPipe,
@@ -52,5 +55,19 @@ export class UsersController {
     await this.users.setRole(id, dto.role);
     user.role = dto.role;
     return user;
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async remove(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() me: AuthUser,
+  ): Promise<void> {
+    if (id === me.id) {
+      throw new BadRequestException('You cannot delete your own account');
+    }
+    if (!(await this.users.remove(id))) {
+      throw new NotFoundException('User not found');
+    }
   }
 }

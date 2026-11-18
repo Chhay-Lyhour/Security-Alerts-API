@@ -656,7 +656,7 @@
   // ------------------------------------------------------------------ USERS tab
   async function loadUsers() {
     const users = await api('/users');
-    $('#users-table').innerHTML = `<thead><tr><th>Email</th><th>Role</th><th>Created</th></tr></thead><tbody>${
+    $('#users-table').innerHTML = `<thead><tr><th>Email</th><th>Role</th><th>Created</th><th></th></tr></thead><tbody>${
       users
         .map((u) => {
           const self = u.id === S.user.id;
@@ -665,9 +665,10 @@
             : `<select data-user-role="${esc(u.id)}" aria-label="Role for ${esc(u.email)}">${['analyst', 'admin']
                 .map((r) => `<option ${r === u.role ? 'selected' : ''}>${r}</option>`)
                 .join('')}</select>`;
-          return `<tr><td><b>${esc(u.email)}</b></td><td>${role}</td><td class="nowrap">${esc(clock(u.createdAt))}</td></tr>`;
+          const del = self ? '' : `<button type="button" class="btn ghost xs" data-delete-user="${esc(u.id)}" data-email="${esc(u.email)}">Delete</button>`;
+          return `<tr><td><b>${esc(u.email)}</b></td><td>${role}</td><td class="nowrap">${esc(clock(u.createdAt))}</td><td>${del}</td></tr>`;
         })
-        .join('') || `<tr><td colspan="3">${empty('No users.')}</td></tr>`
+        .join('') || `<tr><td colspan="4">${empty('No users.')}</td></tr>`
     }</tbody>`;
     markUpdated();
   }
@@ -734,6 +735,10 @@
     }
     if (d.unblock) return act(() => api(`/firewall/blocked-ips/${d.unblock}`, { method: 'DELETE' }), 'IP unblocked.').then(() => d.reopen && openIp(d.reopen));
     if (d.blockIp) return act(() => api('/firewall/blocked-ips', { method: 'POST', body: { ip: d.blockIp, reason: 'Blocked from the dashboard', expiresInMinutes: 60 } }), `Blocked ${d.blockIp}.`).then(() => openIp(d.blockIp));
+    if (d.deleteUser) {
+      if (!confirm(`Delete ${d.email}? They are signed out everywhere at once. This can't be undone.`)) return;
+      return act(() => api(`/users/${d.deleteUser}`, { method: 'DELETE' }), `Deleted ${d.email}.`);
+    }
     if (d.lift) return act(() => api(`/detection/lockouts/${d.lift}`, { method: 'DELETE' }), 'Lockout lifted.');
     if (d.page) {
       S.page[d.page] = Number(d.to);
